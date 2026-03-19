@@ -1,0 +1,808 @@
+{% extends 'master_base.html' %}
+{% load static %}
+
+{% block title %}Личный кабинет мастера{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="welcome-section">
+        <h1>Добро пожаловать, {{ master.display_name }}!</h1>
+    </div>
+    <div class="header-actions">
+        <button class="icon-btn"><i class="fas fa-bell"></i></button>
+        <button class="icon-btn"><i class="fas fa-question-circle"></i></button>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Левый блок - Недавние отклики -->
+    <div class="dashboard-card responses-card">
+        <div class="card-header">
+            <h3>Мои отклики</h3>
+            <a href="#" class="view-all">Все</a>
+        </div>
+        <div class="card-content">
+            {% if recent_responses %}
+                {% for response in recent_responses %}
+                <!-- Здесь будут отклики -->
+                {% endfor %}
+            {% else %}
+                <p class="empty-state">Откликов пока нет</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Правый блок - Мои клиенты -->
+    <div class="dashboard-card clients-card">
+        <div class="card-header">
+            <h3>Мои клиенты</h3>
+            <a href="#" class="view-all">Все</a>
+        </div>
+        <div class="card-content">
+            {% if recent_clients %}
+                {% for client in recent_clients %}
+                <div class="client-item">
+                    <div class="client-avatar">
+                        {% if client.avatar %}
+                            <img src="{{ client.avatar.url }}" alt="{{ client.full_name }}">
+                        {% else %}
+                            <div class="avatar-placeholder">
+                                {% if client.full_name %}
+                                    {{ client.full_name|first }}
+                                {% else %}
+                                    ?
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="client-info">
+                        <h4>{{ client.full_name|default:"Клиент" }}</h4>
+                        <p>{{ client.user.phone|default:"телефон не указан" }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-state">Клиентов пока нет</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Блок с предстоящими записями -->
+<div class="dashboard-card upcoming-bookings-card full-width">
+    <div class="card-header">
+        <h3>Предстоящие записи</h3>
+        <a href="#" class="view-all">Все</a>
+    </div>
+    <div class="card-content">
+        {% if selected_date_bookings %}
+            <div class="bookings-list">
+                {% for booking in selected_date_bookings %}
+                <div class="booking-item">
+                    <div class="booking-time">
+                        {{ booking.time|time:"H:i" }}
+                    </div>
+                    <div class="booking-client">
+                        <div class="client-avatar small">
+                            {% if booking.client.avatar %}
+                                <img src="{{ booking.client.avatar.url }}" alt="">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ booking.client.full_name|first|default:"К" }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="client-name">{{ booking.client.full_name }}</div>
+                    </div>
+                    <div class="booking-service">
+                        {{ booking.service }}
+                    </div>
+                    <div class="booking-price">
+                        {{ booking.price }} ₽
+                    </div>
+                    <div class="booking-status status-{{ booking.status }}">
+                        {{ booking.get_status_display }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">На сегодня записей нет</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if show_profile_modal %}
+<!-- Модальное окно для заполнения профиля -->
+<div id="profileModal" class="modal" style="display: flex;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Заполните профиль</h2>
+            <p>Пожалуйста, заполните основные данные для продолжения работы</p>
+        </div>
+        
+        <form id="profileForm" method="POST" action="{% url 'master_complete_profile' %}">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="display_name">Название студии или имя <span class="required">*</span></label>
+                <input type="text" id="display_name" name="display_name" 
+                       placeholder="Введите название или имя" 
+                       value="{{ master.display_name|default:'' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="address_text">Адрес <span class="required">*</span></label>
+                <input type="text" id="address_text" name="address_text" 
+                       placeholder="Введите адрес" 
+                       value="{{ master.address_text|default:'' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="bio">О себе</label>
+                <textarea id="bio" name="bio" rows="3" 
+                          placeholder="Расскажите о себе">{{ master.bio|default:'' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" 
+                       placeholder="Введите email" 
+                       value="{{ user.email|default:'' }}" 
+                       {% if user.email %}readonly class="readonly"{% endif %}>
+                {% if user.email %}
+                <small class="field-note">Email уже указан при регистрации</small>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Телефон</label>
+                <input type="tel" id="phone" name="phone" 
+                       placeholder="Введите номер телефона" 
+                       value="{{ user.phone|default:'' }}"
+                       {% if user.phone %}readonly class="readonly"{% endif %}>
+                {% if user.phone %}
+                <small class="field-note">Телефон уже указан при регистрации</small>
+                {% endif %}
+            </div>
+            
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Модальное окно настроек профиля -->
+<div id="settingsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Настройки профиля</h2>
+            <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
+        </div>
+        
+        <form id="settingsForm" method="POST" action="{% url 'master_update_profile' %}">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="settings_display_name">Название студии или имя <span class="required">*</span></label>
+                <input type="text" id="settings_display_name" name="display_name" 
+                       placeholder="Введите название или имя" 
+                       value="{{ master.display_name|default:'' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="settings_address_text">Адрес <span class="required">*</span></label>
+                <input type="text" id="settings_address_text" name="address_text" 
+                       placeholder="Введите адрес" 
+                       value="{{ master.address_text|default:'' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="settings_bio">О себе</label>
+                <textarea id="settings_bio" name="bio" rows="3" 
+                          placeholder="Расскажите о себе">{{ master.bio|default:'' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="settings_email">Email</label>
+                <input type="email" id="settings_email" name="email" 
+                       placeholder="Введите email" 
+                       value="{{ user.email|default:'' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="settings_phone">Телефон</label>
+                <input type="tel" id="settings_phone" name="phone" 
+                       placeholder="Введите номер телефона" 
+                       value="{{ user.phone|default:'' }}">
+            </div>
+            
+            <div class="divider"></div>
+            
+            <h3>Изменение пароля</h3>
+            <p class="password-hint">Оставьте поля пустыми, если не хотите менять пароль</p>
+            
+            <div class="form-group password-field">
+                <label for="new_password">Новый пароль</label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="new_password" name="new_password" 
+                           placeholder="Введите новый пароль">
+                    <button type="button" class="toggle-password" onclick="togglePassword('new_password', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group password-field">
+                <label for="confirm_password">Подтвердите пароль</label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="confirm_password" name="confirm_password" 
+                           placeholder="Подтвердите новый пароль">
+                    <button type="button" class="toggle-password" onclick="togglePassword('confirm_password', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block right_sidebar %}
+<div class="profile-sidebar">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            {% if master.avatar %}
+                <img src="{{ master.avatar.url }}" alt="{{ master.display_name }}">
+            {% else %}
+                <div class="avatar-large">
+                    {% if master and master.display_name %}
+                        {{ master.display_name|first }}
+                    {% else %}
+                        {{ user.email|first|default:"М" }}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="profile-info">
+            <h3>{{ master.display_name }}</h3>
+            <p>Мастер</p>
+            <p>Телефон: {{ user.phone|default:"не указан" }}</p>
+            <p>Email: {{ user.email }}</p>
+            <p>Адрес: {{ master.address_text }}</p>
+        </div>
+        <a href="#" class="settings-btn" onclick="openSettingsModal(); return false;">
+            <i class="fas fa-cog"></i>
+        </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="bookings-section">
+        <div class="section-header">
+            <h4>Мои записи</h4>
+            <a href="#" class="view-all">Все</a>
+        </div>
+
+        <!-- Календарь -->
+        <div class="calendar-widget">
+            <div class="calendar-header">
+                <button class="month-nav prev" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <span class="current-month">{{ month_name }} {{ current_year }}</span>
+                <button class="month-nav next" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            
+            <div class="calendar-weekdays">
+                <span>Пн</span>
+                <span>Вт</span>
+                <span>Ср</span>
+                <span>Чт</span>
+                <span>Пт</span>
+                <span>Сб</span>
+                <span>Вс</span>
+            </div>
+            
+            <div class="calendar-days">
+                {% for day in calendar_days %}
+                    {% if day.date %}
+                        {% with date_str=day.date|date:'Y-m-d' %}
+                            <div class="calendar-day 
+                                {% if day.has_booking %}has-booking{% endif %} 
+                                {% if day.is_today %}today{% endif %}
+                                {% if date_str == selected_date %}selected{% endif %}"
+                                data-date="{{ date_str }}">
+                                {{ day.day }}
+                            </div>
+                        {% endwith %}
+                    {% else %}
+                        <div class="calendar-day empty"></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Список записей на выбранный день -->
+        <div class="day-bookings" id="day-bookings">
+            <h4>Записи на {{ selected_date|date:"d.m.Y" }}</h4>
+            
+            {% if selected_date_bookings %}
+                {% for booking in selected_date_bookings %}
+                <div class="booking-item">
+                    <div class="booking-time">{{ booking.time|time:"H:i" }}</div>
+                    <div class="booking-client">{{ booking.client.full_name }}</div>
+                    <div class="booking-service">{{ booking.service }}</div>
+                    <div class="booking-price">{{ booking.price }} ₽</div>
+                    <div class="booking-status status-{{ booking.status }}">
+                        {{ booking.get_status_display }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-state">На этот день записей нет</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<form method="get" id="month-form" style="display: none;">
+    <input type="hidden" name="month" id="month-input" value="{{ current_month }}">
+    <input type="hidden" name="year" id="year-input" value="{{ current_year }}">
+    <input type="hidden" name="date" id="date-input" value="{{ selected_date }}">
+</form>
+
+<style>
+/* Стили для модальных окон - можно вынести в отдельный CSS файл */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease-out;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    position: relative;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.modal-header h2 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.close-btn {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+.close-btn:hover {
+    color: #333;
+    background-color: #f0f0f0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 500;
+}
+
+.form-group .required {
+    color: #e74c3c;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #202020;
+}
+
+.form-group input.readonly {
+    background-color: #f8f9fa;
+    border-color: #ddd;
+    color: #666;
+    cursor: not-allowed;
+}
+
+.form-group .field-note {
+    display: block;
+    margin-top: 5px;
+    color: #27ae60;
+    font-size: 12px;
+}
+
+.divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 20px 0;
+}
+
+.password-hint {
+    color: #666;
+    font-size: 12px;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.password-field {
+    position: relative;
+}
+
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper input {
+    flex: 1;
+    padding-right: 40px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px;
+    z-index: 2;
+}
+
+.toggle-password:hover {
+    color: #202020;
+}
+
+.modal-footer {
+    text-align: center;
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn {
+    padding: 12px 40px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background-color: #202020;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(149, 165, 166, 0.3);
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Стили для клиентов */
+.client-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.client-item:last-child {
+    border-bottom: none;
+}
+
+.client-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 12px;
+    background: #3a3a3a;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.client-avatar.small {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+}
+
+.client-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.client-info h4 {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.client-info p {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Стили для записей */
+.bookings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.booking-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.booking-time {
+    font-weight: 500;
+    color: #202020;
+    min-width: 60px;
+}
+
+.booking-client {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 2;
+}
+
+.client-name {
+    font-weight: 500;
+}
+
+.booking-service {
+    flex: 2;
+    color: #666;
+}
+
+.booking-price {
+    font-weight: 500;
+    color: #27ae60;
+    min-width: 80px;
+}
+
+.booking-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 100px;
+    text-align: center;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-confirmed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-completed {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.status-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Выделение выбранного дня в календаре */
+.calendar-day.selected {
+    background-color: #3a3a3a;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #202020;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+</style>
+
+<script>
+// Функции для модального окна настроек
+function openSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'flex';
+    document.body.classList.add('modal-open');
+}
+
+function closeSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+}
+
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// Закрытие модального окна по клику на фон
+document.addEventListener('DOMContentLoaded', function() {
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) {
+        settingsModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSettingsModal();
+            }
+        });
+    }
+    
+    {% if show_profile_modal %}
+    const profileModal = document.getElementById('profileModal');
+    if (profileModal) {
+        profileModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                e.stopPropagation();
+            }
+        });
+    }
+    {% endif %}
+});
+
+// Функции для календаря
+function changeMonth(delta) {
+    let month = parseInt(document.getElementById('month-input').value);
+    let year = parseInt(document.getElementById('year-input').value);
+    
+    month += delta;
+    
+    if (month < 1) {
+        month = 12;
+        year -= 1;
+    } else if (month > 12) {
+        month = 1;
+        year += 1;
+    }
+    
+    document.getElementById('month-input').value = month;
+    document.getElementById('year-input').value = year;
+    document.getElementById('month-form').submit();
+}
+
+// Обработчик клика по дню в календаре
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarDays = document.querySelectorAll('.calendar-day:not(.empty)');
+    
+    calendarDays.forEach(day => {
+        day.addEventListener('click', function() {
+            const date = this.dataset.date;
+            if (date) {
+                setTimeout(() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('date', date);
+                    url.searchParams.set('month', document.getElementById('month-input').value);
+                    url.searchParams.set('year', document.getElementById('year-input').value);
+                    window.location.href = url.toString();
+                }, 100);
+            }
+        });
+    });
+});
+
+{% if show_profile_modal %}
+document.body.classList.add('modal-open');
+
+document.getElementById('profileForm').addEventListener('submit', function(e) {
+    const nameInput = document.getElementById('display_name');
+    const addressInput = document.getElementById('address_text');
+    if (!nameInput.value.trim() || !addressInput.value.trim()) {
+        e.preventDefault();
+        alert('Пожалуйста, заполните обязательные поля');
+        nameInput.focus();
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -150,3 +150,9 @@ DEFAULT_FROM_EMAIL = "GlowUp <no-reply@glowup.local>"
 LOGIN_URL = 'login'  # URL для входа
 LOGIN_REDIRECT_URL = 'client_dashboard'  # Куда перенаправлять после входа
 LOGOUT_REDIRECT_URL = 'home'  # Куда перенаправлять после выхода
+
+CSRF_COOKIE_SECURE = False  # Для разработки (для HTTPS нужно True)
+CSRF_COOKIE_HTTPONLY = False  # Разрешить JavaScript доступ к CSRF-токену
+CSRF_COOKIE_SAMESITE = 'Lax'  # Или 'Strict' для большей безопасности
+CSRF_USE_SESSIONS = False  # Хранить CSRF в куках, а не в сессии
+CSRF_COOKIE_NAME = 'csrftoken'  # Стандартное имя
