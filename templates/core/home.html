@@ -1,0 +1,233 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{% static 'css/home.css' %}">
+  <title>GLOWUP</title>
+
+</head>
+<body>
+  <div class="cursor-hint">Нажми, чтобы пропустить</div>
+
+  <div class="intro-screen">
+    <div class="overlay">
+        <div class="projects">
+          <div class="projects-header">
+            <p>Masters</p>
+            <p>Studios</p>
+          </div>
+        </div>
+        <div class="loader">
+          <h1 class="logo-line-1">Glow</h1>
+          <h1 class="logo-line-2">Up</h1>
+        </div>
+        <div class="locations">
+          <div class="locations-header">
+            <p>Services</p>
+          </div>
+        </div>
+    </div>
+
+
+
+    <div class="image-grid">
+      <div class="grid-row">
+        <div class="img"><img src="{% static 'images/img1.jpg' %}" alt=""></div>
+        <div class="img hero-img"><img src="{% static 'images/img9.jpg' %}" alt=""></div>
+        <div class="img"><img src="{% static 'images/img10.jpg' %}" alt=""></div>
+      </div>
+      <div class="grid-row">
+        <div class="img"><img src="{% static 'images/img4.jpg' %}" alt=""></div>
+        <div class="img"><img src="{% static 'images/img5.jpg' %}" alt=""></div>
+        <div class="img"><img src="{% static 'images/img6.jpg' %}" alt=""></div>
+      </div>
+      <div class="grid-row">
+        <div class="img"><img src="{% static 'images/img7.jpg' %}" alt=""></div>
+        <div class="img"><img src="{% static 'images/img8.jpg' %}" alt=""></div>
+        <div class="img"><img src="{% static 'images/img2.jpg' %}" alt=""></div>
+      </div>
+    </div>
+
+    <nav>
+      <div class="links">
+        <a href="#" class="nav-link" data-target="about" data-hover="Кто мы"><span>О нас</span></a>
+        <a href="#" class="nav-link" data-target="faq" data-hover="?"><span>Вопросы</span></a>
+      </div>
+
+      <div class="nav-logo">
+        <a href="#" class="nav-link" data-target="about" data-hover="Да, это мы)"><span>Glow <br />Up</span></a>
+      </div>
+
+      <div class="links">
+        <a href="#" class="nav-link" data-target="contacts" data-hover="Ало?"><span>Контакты</span></a>
+        <a href="/login/" data-hover="Войти"><span>Аккаунт</span></a>
+      </div>
+    </nav>
+
+
+    <div class="banner-img banner-img-1">
+      <img src="{% static 'images/img2.jpg' %}" alt="">
+    </div>
+    <div class="banner-img banner-img-2">
+      <img src="{% static 'images/img5.jpg' %}" alt="">
+    </div>
+
+    <div class="intro-copy">
+      <h3 class="arrow-left">
+        <a class="intro-link" href="{% url 'register' %}">
+          <span>Поиск мастеров</span>
+        </a>
+      </h3>
+
+      <h3 class="arrow-right">
+        <a class="intro-link" href="{% url 'login' %}">
+          <span>Удобная онлайн-запись</span>
+        </a>
+      </h3>
+    </div>
+
+    <div class="title">
+      <h1>Красота начинается здесь</h1>
+    </div>
+
+    <!-- кнопка перехода к горизонтальному скроллу (появляется после интро) -->
+    <button class="scroll-toggle scroll-toggle--bottom" type="button" aria-label="Перейти к горизонтальному скроллу">
+      <span class="scroll-toggle__chevron" aria-hidden="true">↓</span>
+    </button>
+
+  </div>
+
+
+  <div class="container">
+    <!-- кнопка возврата на главную (видна только в режиме горизонтального скролла) -->
+    <button class="scroll-toggle scroll-toggle--top" type="button" aria-label="Вернуться на главную">
+      <span class="scroll-toggle__chevron" aria-hidden="true">↑</span>
+    </button>
+
+
+    <div class="progress-bar"></div>
+
+    <div class="progres-counter">
+      <h1>0</h1>
+    </div>
+
+    <div class="scroller">
+
+      <section class="intro">
+        <h1>Glow Up</h1>
+        <h2>Платформа удобной записи и поиска мастеров в индустрии красоты</h2>
+      </section>
+
+      <section class="hero-img2">
+        <img src="{% static 'images/img13.jpg' %}" alt="">
+      </section>
+
+      <section class="header">
+        <h1>
+          Всё, что важно для клиента и мастера — в одном пространстве
+        </h1>
+      </section>
+
+      <section class="about">
+        <div class="row">
+          <div class="copy">
+            <p>Glow Up — это сервис, который объединяет клиентов и мастеров
+              в индустрии красоты на одной платформе.
+            </p>
+            <p>
+              Мы сделали процесс поиска и записи простым и прозрачным:
+              клиент видит реальные услуги и свободное время,
+              мастер — получает удобный инструмент для работы и общения.
+            </p>
+          </div>
+          <div class="img2"><img src="{% static 'images/img10.jpg' %}" alt=""></div>
+        </div>
+
+        <h1>Логика и возможности сервиса</h1>
+      </section>
+
+      <section class="faq">
+        <h1>Вопросы</h1>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-q">Как записаться к мастеру?</div>
+            <div class="faq-a">Выберите мастера, услугу и удобное время — запись подтвердится сразу в личном кабинете.</div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-q">Нужно ли регистрироваться?</div>
+            <div class="faq-a">Да, чтобы видеть записи и общаться с мастером. Регистрация занимает меньше минуты.</div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-q">Как мастер получает заявки?</div>
+            <div class="faq-a">Мастер видит новые отклики и записи, подтверждает время и отвечает в чате.</div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-q">Можно ли отменить или перенести запись?</div>
+            <div class="faq-a">Да. В разделе «Мои записи» можно отменить или предложить другое время не менее чем за 24ч до записи.</div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="banner-img2">
+        <img src="{% static 'images/img-12.jpg' %}" alt="">
+      </section>
+
+      <section class="contacts">
+        <h1>Контакты</h1>
+
+        <p class="contacts-text">
+          Есть дополнительные вопросы? Перейдите в нашего Telegram-бота.
+        </p>
+
+        <div class="tg">
+          <ul>
+            <li style="--i:#11aade;--j:#11aade">
+              <a href="https://t.me/glowup_support_tgbot" target="_blank">
+                <img src="{% static 'images/telegram-logo.png' %}" alt="Telegram">
+                <span class="title">Есть вопросы?</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+
+        <div class="contacts-note">
+          <p>
+            Также можно написать в поддержку на email —
+            <span class="copy-email" data-copy="glowup-support@yandex.ru">glowup-support@yandex.ru</span>
+          </p>
+        </div>
+
+      </section>
+
+
+      <section class="story">
+        <h1>Запись без лишних шагов</h1>
+        <h1>Запись без лишних шагов</h1>
+        <h1>Запись без лишних шагов</h1>
+        <h1>Запись без лишних шагов</h1>
+      </section>
+
+      <section class="concept-img">
+        <img src="{% static 'images/img14.jpg' %}" alt="">
+      </section>
+
+    </div>
+
+
+   <script src="https://unpkg.com/split-type"></script>
+
+  <!-- 2. GSAP -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/CustomEase.min.js"></script>
+  <script type="module" src="{% static 'js/home.js' %}"></script>
+
+</body>
+</html>

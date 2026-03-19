@@ -1,0 +1,1055 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "PP Neue Montreal", sans-serif;
+  background-color: #e3e3db;
+
+}
+
+html, body {
+  overscroll-behavior: none;
+}
+
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+p{
+  text-transform: uppercase;
+  font-family: "Akkurat Mono", monospace;
+  font-size: 0.95rem;
+}
+
+a{
+  text-decoration: none;
+  text-transform: uppercase;
+  font-family: "Akkurat Mono", monospace;
+  font-size: 0.7rem;
+  color: #000;
+}
+
+.overlay{
+  position: absolute;
+  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100svh;
+  padding: 2em;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  gap: 2em;
+  overflow: hidden;
+}
+
+.overlay.is-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+
+section { flex: 0 0 auto; }
+
+
+.projects,
+.loader,
+.locations{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2em;
+}
+
+.loader{
+  align-items: center;
+  gap: 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+.loader h1 {
+  text-align: center;
+  text-transform: uppercase;
+  font-family: "Druk", sans-serif;
+  font-size: 2rem;
+  font-style: italic;
+  line-height: 1.5;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-image: linear-gradient(0deg, #3a3a3a, #3a3a3a 50%, #fff 0);
+  background-size: 100% 200%;
+  background-position: 0% 100%;
+  color: #3a3a3a;
+  padding: 0 0.2em;
+}
+
+.projects-header,
+.project-item,
+.locations-header,
+.location-item {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 25em;
+  opacity: 0;
+  align-items: baseline;
+}
+
+.projects-header > *,
+.locations-header > * {
+  flex: 1;
+}
+
+.projects-header,
+.project-item{
+  display: grid;
+  grid-template-columns: 18ch 1fr; /* 18 символов под Masters */
+  column-gap: 10em;
+  align-items: baseline;
+}
+
+
+.projects-header > *,
+.project-item > *{
+  min-width: 0;
+  margin: 0;
+  flex: initial;
+}
+
+.project-item p:first-child{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locations {
+  align-items: center;
+}
+
+.locations-header,
+.location-item{
+  width: 50%;
+}
+
+.project-item,
+.location-item {
+  color: #4f4f4f;
+}
+
+.image-grid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30%;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  z-index: 2;
+}
+
+.image-grid .img{
+  flex: 1;
+  aspect-ratio: 1;
+  overflow: hidden;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%); /* скрыто в начале */
+}
+
+.image-grid .img img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grid-row {
+  width: 100%;
+  display: flex;
+  gap: 1em;
+}
+
+.img {
+  position: relative;
+  flex: 1;
+  aspect-ratio: 1;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%);
+}
+
+nav {
+  position: fixed;
+  width: 100vw;
+  padding: 1em;
+  display: flex;
+  gap: 2em;
+}
+
+nav > * {
+  flex: 1;
+}
+
+.links {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.links a {
+  color: #4f4f4f;
+  font-size: 0.8rem;
+}
+
+.links a,
+.nav-logo a {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  padding: 0.5em;
+}
+
+.links a span,
+.nav-logo a span {
+  display: inline-block;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.links a::after,
+.nav-logo a::after {
+  content: attr(data-hover);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  width: 100%;
+  text-align: center;
+  opacity: 0;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.links a:hover span,
+.nav-logo a:hover span {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.links a:hover::after,
+.nav-logo a:hover::after {
+  transform: translateY(-100%);
+  opacity: 1;
+}
+
+.nav-logo {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+.nav-logo a {
+  font-family: "Druk", sans-serif;
+  font-size: 1.75rem;
+  font-weight: bolder;
+  font-style: italic;
+  line-height: 0.9;
+}
+
+.banner-img {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 15%;
+  aspect-ratio: 4/5;
+}
+
+.intro-copy {
+  position: absolute;
+  top: 45%;
+  transform: translateY(-50%);
+  width: 100%;
+  padding: 0 8em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+}
+
+.intro-copy h3{
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  font-size: 3rem;
+}
+
+/* текст */
+.intro-copy h3 span{
+  display: inline-block;
+  transition: opacity .35s ease, transform .35s ease;
+}
+
+/* стрелка (поверх текста) */
+.intro-copy h3::after{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  opacity: 0;
+  transition: opacity .35s ease, transform .35s ease;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* направление стрелок */
+.intro-copy h3.arrow-left::after{
+  content: "←";
+
+}
+
+.intro-copy h3.arrow-right::after{
+  content: "→";
+}
+
+/* hover-состояние */
+.intro-copy h3:hover span{
+  opacity: 0;
+  transform: translateY(-6px);
+  cursor: pointer;
+}
+
+.intro-copy h3:hover::after{
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  cursor: pointer;
+}
+
+
+
+
+
+.title {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.intro-copy h3,
+.title h1 {
+  position: relative;
+  text-transform: uppercase;
+  color: #000;
+  font-family: "Druk", sans-serif;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 0.9;
+}
+
+.title h1 {
+  font-size: 3.5rem;
+}
+
+.intro-copy h3,
+.title h1 {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+}
+
+.intro-link {
+  color: inherit;
+  text-decoration: none;
+  display: inline-block;
+}
+.intro-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+.intro-copy h3 .word,
+.title h1 .word {
+  display: inline-block;
+  position: relative;
+  will-change: transform;
+  margin-right: 0.1rem;
+}
+
+.cursor-hint{
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+
+  font-family: "Akkurat Mono", monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #fff;
+
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.25s ease, transform 0.1s linear;
+  mix-blend-mode: difference; /* красиво на тёмном/светлом */
+}
+
+@keyframes hintPulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+body.show-cursor-hint .cursor-hint{
+  animation: hintPulse 1.8s ease-in-out infinite;
+}
+
+
+
+@media (max-width: 900px) {
+  .loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .projects,
+  .locations,
+  .intro-copy,
+  .banner-img {
+    display: none;
+  }
+
+  .title {
+    width: 100%;
+    bottom: 20%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .title h1 {
+    font-size: 2.5rem;
+  }
+
+  .image-grid {
+    width: 75%;
+    gap: 0.5em;
+  }
+
+  .grid-row {
+    width: 95%;
+    justify-content: space-around;
+    gap: 0.5em;
+  }
+}
+
+.intro-screen{
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+}
+
+
+
+
+
+/* ===== Кнопки перехода (полукруги) ===== */
+.scroll-toggle{
+  position: absolute;
+  left: 50%;
+  width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.35);
+  background: rgba(227,227,219,0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  transform: translateX(-50%);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition: 0.4s ease;
+}
+
+.scroll-toggle:active{
+  transform: translateX(-50%) scale(0.97);
+}
+
+.scroll-toggle__chevron{
+  font-family: "Akkurat Mono", monospace;
+  font-size: 20px;
+  line-height: 1;
+  color: #000;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+/* стрелка в нижней кнопке — в верхней половине */
+.scroll-toggle--bottom .scroll-toggle__chevron{
+  transform: translateY(-14px);
+}
+
+/* стрелка в верхней кнопке — в нижней половине */
+.scroll-toggle--top .scroll-toggle__chevron{
+  transform: translateY(14px);
+}
+
+
+
+.scroll-toggle--bottom:hover {
+  background-color: #3a3a3a;
+}
+
+
+
+.scroll-toggle--top:hover{
+  background-color: #3a3a3a;
+}
+
+.scroll-toggle{
+  overflow: hidden;
+}
+
+.scroll-toggle::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Akkurat Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e3e3db;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* подписи */
+.scroll-toggle--bottom::after{ content: "вниз"; }
+.scroll-toggle--top::after{ content: "наверх"; }
+
+/* смещаем текст туда же, куда стрелку */
+.scroll-toggle--bottom::after{ transform: translateY(-14px); }
+.scroll-toggle--top::after{ transform: translateY(14px); }
+
+
+.scroll-toggle:hover .scroll-toggle__chevron{
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.scroll-toggle:hover .scroll-toggle__chevron{
+  opacity: 0;
+}
+
+.scroll-toggle:hover::after{
+  opacity: 1;
+}
+
+
+
+
+
+/* по умолчанию скрываем обе кнопки, показываем по состояниям */
+.scroll-toggle{ opacity: 0; pointer-events: none; }
+
+.scroll-toggle--bottom{
+  bottom: 0;
+  transform: translate(-50%, 55%); /* половина уходит вниз за экран (intro-screen скрывает) */
+}
+
+.scroll-toggle--top{
+  top: 0;
+  transform: translate(-50%, -55%); /* половина уходит вверх за экран (container скрывает) */
+}
+
+/* Кнопка снизу видна только после завершения интро */
+body.intro-ready .scroll-toggle--bottom{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Кнопка сверху — только в режиме горизонтального скролла */
+body.in-hscroll .scroll-toggle--top{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
+
+
+
+
+
+
+h1 {
+  font-family: "Druk", sans-serif;
+  font-size: 15vw;
+  font-weight: lighter;
+  text-transform: uppercase;
+  line-height: 0.8;
+  padding-top: 0.2em;
+}
+
+h2 {
+  font-family: "Akkurat Mono", monospace;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+p {
+  font-family: "Saans TRIAL";
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.image-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.container {
+  position: relative;
+  width: 100vw;
+  height: 100svh;
+  overflow: hidden;
+  margin-top: 100svh;
+  background: rgba(255,0,0,0.1);
+}
+
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 10px;
+  transform: scaleX(0%);
+  transform-origin: center left;
+  background-color: #e3e3db;
+  will-change: transform;
+  z-index: 2;
+}
+
+.progres-counter {
+  position: fixed;
+  bottom: 1em;
+  right: 2.5em;
+  color: #fff;
+  z-index: 2;
+}
+
+
+
+.progress-bar,
+.progres-counter {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Показываем только когда дошли до .container */
+body.in-hscroll .progress-bar,
+body.in-hscroll .progres-counter {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
+
+
+
+.scroller {
+  position: relative;
+  width: 700vw;
+  height: 100svh;
+  display: flex;
+  will-change: transform;
+  transform: translateX(0);
+}
+
+section {
+  position: relative;
+  height: 100svh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.intro,
+.hero-img2,
+.about,
+.banner-img2,
+.story {
+  width: 75vw;
+}
+
+.header,
+.concept-img {
+  width: 100vw;
+}
+
+.intro,
+.header {
+  padding: 2em;
+  background-color: #3a3a3a;
+  color: #fff;
+}
+
+.about {
+  padding: 4em 3em 1em 2em;
+  background-color: #D1603D;
+  color: #fff;
+}
+
+.story {
+  padding: 4em 2em 2em 2em;
+  background-color: #E36588;
+}
+
+.about,
+.intro,
+.header,
+.story {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.into,
+.about,
+.story {
+  flex-direction: column;
+}
+
+.header h1 {
+  font-size: 10.5vw;
+}
+
+.story h1 {
+  padding-top: 0;
+}
+
+.about .row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.about .row p {
+  width: 50%;
+  margin-top: 1em;
+}
+
+.about .row .copy {
+  flex: 3;
+}
+
+.about .row .img2 {
+  flex: 2;
+  aspect-ratio: 7/5;
+}
+
+.about h1 {
+  font-size: 9vw;
+}
+
+/* ===== FAQ (вопрос -> ответ на месте) ===== */
+.faq {
+  position: relative;
+  padding: 6rem 4rem;
+  min-width: 100vw; /* если у вас секции в горизонтали как экраны */
+  background-color: #E36588;
+  color: #fff;
+}
+
+.faq h1 {
+  margin-bottom: 2rem;
+}
+
+.faq-list {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+
+.faq-item {
+  position: relative;
+  /* border: 1px solid rgba(0,0,0,0.22); */
+  border-bottom: 1px solid rgb(255, 255, 255);
+  /* border-radius: 18px; */
+  padding: 30px 30px;
+  overflow: hidden;
+  background: transparent;
+  cursor: pointer;
+}
+
+.faq-q,
+.faq-a {
+  transition: opacity .2s ease, transform .2s ease;
+  will-change: opacity, transform;
+}
+
+/* по умолчанию показываем вопрос */
+.faq-a {
+  position: absolute;
+  inset: 18px;
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* при наведении: вопрос исчезает, ответ появляется НА ЕГО МЕСТЕ */
+.faq-item:hover .faq-q {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.faq-item:hover .faq-a {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* читабельность */
+.faq-q {
+  font-size: 18px;
+  letter-spacing: 0.01em;
+}
+
+.faq-a {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+
+/* ===== Contacts ===== */
+.contacts{
+  padding: 6rem 4rem;
+  min-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background-color: #D1603D;
+  color: #fff;
+}
+
+.contacts-text{
+  max-width: 560px;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.tg-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 14px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.35);
+  text-decoration: none;
+  color: #000;
+  background: rgba(227,227,219,0.9);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.tg-btn:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.12);
+}
+
+
+
+.tg ul {
+  display: flex;
+  position: relative;
+  gap: 25px;
+  list-style: none;
+}
+
+.tg ul li {
+  position: relative;
+  width: 180px;
+  height: 40px;
+}
+
+.tg ul li a {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-radius: 60px;
+  cursor: pointer;
+
+  transition: width 0.5s ease, box-shadow 0.5s ease;
+  overflow: hidden;
+
+  display: block; /* важно */
+
+  border: 1px solid #fff;
+}
+
+
+.tg ul li a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 60px;
+  background: linear-gradient(45deg, var(--i), var(--j));
+  opacity: 0;
+  transition: 0.5s;
+  z-index: 0;
+}
+
+.tg ul li a::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 60px;
+  background: linear-gradient(45deg, var(--i), var(--j));
+  transition: 0.5s;
+  filter: blur(15px);
+  opacity: 0;
+  z-index: -1; /* как было, можно оставить */
+}
+
+/* Эффект при наведении */
+.tg ul li a:hover {
+  width: 180px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0);
+}
+
+.tg ul li a:hover::before {
+  opacity: 1;
+}
+
+.tg ul li a:hover::after {
+  opacity: 0.5;
+}
+
+/* Контент внутри */
+.tg ul li a img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s ease;
+  z-index: 2;
+}
+
+.tg ul li a:hover img {
+  transform: translate(-50%, -50%) scale(0);
+}
+
+
+.tg ul li a span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.tg ul li a .title {
+  color: #fff;
+  font-size: 14px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+
+
+.tg ul li a:hover .title {
+  opacity: 1;
+  transform: scale(1);
+  transition-delay: 0.15s;
+}
+
+.contacts-note{
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+
+.copy-email{
+  position: relative;
+  cursor: pointer;
+  text-decoration: underline;
+  user-select: none;
+  transition: 0.3s ease;
+}
+
+.copy-email:hover {
+  color: #ffffff9c;
+}
+
+.copy-email::after{
+  content: "Скопировано";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(6px);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* показываем тултип */
+.copy-email.is-copied::after{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.scroller img,
+.hero-img2 img,
+.banner-img2 img,
+.concept-img img,
+.about .img2 img {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
+}
+
+
+
+
+
+
+
