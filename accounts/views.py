@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login
+from django.contrib.auth import login, logout, update_session_auth_hash
 from .forms import RegisterForm, LoginForm
 from .models import User
 from django.contrib import messages
@@ -12,6 +12,8 @@ from .models import User, VerificationCode, PendingSignup, PasswordResetToken
 from .services import create_pending_signup, verify_pending_code, generate_code, send_verification_email, send_verification_sms_stub
 from .forms import PasswordResetRequestForm, SetNewPasswordForm
 from .services import create_and_send_password_reset
+from django.contrib.auth.decorators import login_required
+
 
 def register_view(request):
     if request.method == "POST":
@@ -27,9 +29,11 @@ def register_view(request):
 
             # проверяем, что такого пользователя ещё нет
             if email and User.objects.filter(email=email).exists():
-                form.add_error("contact", "Пользователь с таким email уже существует")
+                form.add_error(
+                    "contact", "Пользователь с таким email уже существует")
             elif phone and User.objects.filter(phone=phone).exists():
-                form.add_error("contact", "Пользователь с таким телефоном уже существует")
+                form.add_error(
+                    "contact", "Пользователь с таким телефоном уже существует")
             else:
                 channel = PendingSignup.CHANNEL_EMAIL if email else PendingSignup.CHANNEL_PHONE
 
@@ -63,13 +67,26 @@ def login_view(request):
 
             if user and user.check_password(password):
                 login(request, user)
-                return redirect("home")
+
+                # Перенаправление в зависимости от роли
+                if user.role == 'client':
+                    return redirect('client_dashboard')
+                elif user.role == 'master':
+                    return redirect('master_dashboard')
+                else:
+                    return redirect('home')
 
             form.add_error(None, "Неверные данные")
     else:
         form = LoginForm()
 
     return render(request, "accounts/login.html", {"form": form})
+
+
+def logout_view(request):
+    """Выход из системы"""
+    logout(request)
+    return redirect('login')
 
 
 def verify_view(request):
@@ -105,14 +122,20 @@ def verify_view(request):
                 pending.delete()
 
                 login(request, user)
-                return redirect("home")
+
+                # Перенаправление в зависимости от роли
+                if user.role == 'client':
+                    return redirect('client_dashboard')
+                elif user.role == 'master':
+                    return redirect('master_dashboard')
+                else:
+                    return redirect('home')
 
             form.add_error("code", "Неверный или просроченный код")
     else:
         form = VerifyCodeForm()
 
     return render(request, "accounts/verify.html", {"form": form, "contact": contact, "pid": pid})
-
 
 
 def resend_code_view(request):
@@ -143,7 +166,6 @@ def resend_code_view(request):
     return redirect(f"/verify/?pid={pid}")
 
 
-
 def password_reset_request_view(request):
     """
     Страница: ввод email/телефона → отправка ссылки.
@@ -162,7 +184,8 @@ def password_reset_request_view(request):
                 channel = PasswordResetToken.CHANNEL_PHONE
 
             if user:
-                create_and_send_password_reset(user, channel=channel, request=request)
+                create_and_send_password_reset(
+                    user, channel=channel, request=request)
 
             # Всегда одинаковый ответ
             return render(request, "accounts/password_reset_sent.html", {"contact": contact})
@@ -173,7 +196,8 @@ def password_reset_request_view(request):
 
 
 def password_reset_confirm_view(request, token):
-    prt = PasswordResetToken.objects.filter(token=token, is_used=False).select_related("user").first()
+    prt = PasswordResetToken.objects.filter(
+        token=token, is_used=False).select_related("user").first()
     if not prt or prt.is_expired():
         return render(request, "accounts/password_reset_invalid.html")
 

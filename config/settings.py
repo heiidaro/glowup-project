@@ -39,10 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
 
-# local apps
+    # local apps
+
+    'bookings',
     'core',
     'posts',
-    'bookings',
     'chat',
     'notifications',
 
@@ -131,7 +132,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 TEMPLATES[0]['DIRS'] = [BASE_DIR / 'templates']
@@ -147,3 +147,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "GlowUp <no-reply@glowup.local>"
 
+LOGIN_URL = 'login'  # URL для входа
+LOGIN_REDIRECT_URL = 'client_dashboard'  # Куда перенаправлять после входа
+LOGOUT_REDIRECT_URL = 'home'  # Куда перенаправлять после выхода

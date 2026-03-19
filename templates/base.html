@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlowUp - {% block title %}Личный кабинет{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Левая боковая панель -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h2>GLOW<br>UP</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul class="nav-top">
+                    <li class="{% if request.resolver_match.url_name == 'client_dashboard' %}active{% endif %}">
+                        <a href="{% url 'client_dashboard' %}">
+                            <i class="fas fa-user"></i>
+                            <span>Аккаунт</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Записи</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <i class="fas fa-users"></i>
+                            <span>Мастера</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <i class="fas fa-newspaper"></i>
+                            <span>Посты</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <i class="fas fa-comment"></i>
+                            <span>Сообщения</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="nav-bottom">
+                    <li>
+                        <a href="{% url 'logout' %}">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Выйти</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            {% block content %}
+            {% endblock %}
+        </main>
+
+        <!-- Правая боковая панель (календарь и профиль) -->
+        <aside class="right-sidebar">
+            {% block right_sidebar %}
+            {% endblock %}
+        </aside>
+    </div>
+
+    <script src="{% static 'js/script.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</body>
+</html>
