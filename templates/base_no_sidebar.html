@@ -4,44 +4,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowUp - {% block title %}Личный кабинет{% endblock %}</title>
+    <title>GlowUp - {% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/bookings.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Левая боковая панель -->
+        <!-- Левая боковая панель (остается) -->
         <aside class="sidebar">
             <div class="logo">
-                <h2>GLOW<br>UP</h2>
+                <h2>GLOWUP</h2>
             </div>
             
             <nav class="sidebar-nav">
                 <ul class="nav-top">
-                    <li class="{% if request.resolver_match.url_name == 'client_dashboard' %}active{% endif %}">
-                        <a href="{% url 'client_dashboard' %}">
+                    <li class="{% if request.resolver_match.url_name == 'client_dashboard' or request.resolver_match.url_name == 'master_dashboard' %}active{% endif %}">
+                        <a href="
+                            {% if user.role == 'client' %}
+                                {% url 'client_dashboard' %}
+                            {% elif user.role == 'master' %}
+                                {% url 'master_dashboard' %}
+                            {% endif %}
+                        ">
                             <i class="fas fa-user"></i>
                             <span>Аккаунт</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="
+                    <li class="{% if 'bookings' in request.resolver_match.url_name %}active{% endif %}">
+                      <a href="
                           {% if user.role == 'client' %}
                               {% url 'client_bookings' %}
                           {% elif user.role == 'master' %}
                               {% url 'master_bookings' %}
+                          {% else %}
+                              #
                           {% endif %}
                       ">
                           <i class="fas fa-calendar-check"></i>
                           <span>Записи</span>
                       </a>
-                    </li>
+                  </li>
+                    
+                    {% if user.role == 'client' %}
                     <li>
                         <a href="#">
                             <i class="fas fa-users"></i>
                             <span>Мастера</span>
                         </a>
                     </li>
+                    {% endif %}
+                    
                     <li>
                         <a href="#">
                             <i class="fas fa-newspaper"></i>
@@ -67,30 +80,14 @@
             </nav>
         </aside>
 
-        <!-- Основной контент -->
-        <main class="main-content">
+        <!-- Основной контент на всю ширину -->
+        <main class="main-content-full">
             {% block content %}
             {% endblock %}
         </main>
-
-        <!-- Правая боковая панель (календарь и профиль) -->
-        <aside class="right-sidebar">
-            {% block right_sidebar %}
-            {% endblock %}
-        </aside>
     </div>
 
     <script src="{% static 'js/script.js' %}"></script>
     {% block extra_js %}{% endblock %}
-
-    {% if messages %}
-    <div class="messages">
-        {% for message in messages %}
-        <div class="message {{ message.tags }}">
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
 </body>
 </html>

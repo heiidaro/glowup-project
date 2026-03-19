@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from datetime import timedelta
+from django.utils import timezone
 
 
 class Booking(models.Model):
@@ -37,6 +39,40 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.client.full_name} - {self.service} - {self.date}"
+
+    @property
+    def time_until(self):
+        """Возвращает время до записи в читаемом формате"""
+        now = timezone.now()
+        booking_datetime = timezone.make_aware(
+            datetime.combine(self.date, self.time)
+        )
+
+        if booking_datetime < now:
+            return "Запись прошла"
+
+        delta = booking_datetime - now
+
+        if delta.days > 0:
+            return f"{delta.days} д {delta.seconds // 3600} ч"
+        elif delta.seconds // 3600 > 0:
+            return f"{delta.seconds // 3600} ч {delta.seconds % 3600 // 60} мин"
+        else:
+            return f"{delta.seconds // 60} мин"
+
+    @property
+    def can_cancel(self):
+        """Можно ли отменить запись (не позднее чем за 24 часа)"""
+        now = timezone.now()
+        booking_datetime = timezone.make_aware(
+            datetime.combine(self.date, self.time)
+        )
+        return (booking_datetime - now) > timedelta(hours=24)
+
+    @property
+    def can_reschedule(self):
+        """Можно ли перенести запись (не позднее чем за 24 часа)"""
+        return self.can_cancel  # То же условие
 
 
 # class BookingResponse(models.Model):

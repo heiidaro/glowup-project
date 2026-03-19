@@ -3,6 +3,11 @@ from . import views
 
 urlpatterns = [
     path('dashboard/', views.master_dashboard, name='master_dashboard'),
+    path('bookings/', views.master_bookings, name='master_bookings'),
+    path('cancel-booking/<int:booking_id>/',
+         views.cancel_booking, name='master_cancel_booking'),
+    path('reschedule-booking/<int:booking_id>/',
+         views.reschedule_booking, name='master_reschedule_booking'),
     path('complete-profile/', views.complete_profile,
          name='master_complete_profile'),
     path('update-profile/', views.update_profile, name='master_update_profile'),

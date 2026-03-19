@@ -25,11 +25,17 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#">
-                            <i class="fas fa-calendar-check"></i>
-                            <span>Записи</span>
-                        </a>
-                    </li>
+                      <a href="
+                          {% if user.role == 'client' %}
+                              {% url 'client_bookings' %}
+                          {% elif user.role == 'master' %}
+                              {% url 'master_bookings' %}
+                          {% endif %}
+                      ">
+                          <i class="fas fa-calendar-check"></i>
+                          <span>Записи</span>
+                      </a>
+                  </li>
                     <li>
                         <a href="#">
                             <i class="fas fa-newspaper"></i>

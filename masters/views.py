@@ -6,10 +6,49 @@ from .models import MasterProfile
 from bookings.models import Booking
 from datetime import datetime, date
 import calendar
+from django.utils import timezone
 
 
-def get_calendar_days(year, month, bookings):
-    """Генерирует дни месяца для календаря"""
+def get_calendar_days(year, month, active_bookings, archived_bookings):
+    """Генерирует дни месяца для календаря с отметками о записях"""
+    first_day = date(year, month, 1)
+    _, num_days = calendar.monthrange(year, month)
+    first_weekday = first_day.weekday()
+
+    # Создаем множества дат для активных и архивных записей
+    active_dates = {booking.date for booking in active_bookings}
+    archived_dates = {booking.date for booking in archived_bookings}
+
+    days = []
+
+    # Пустые ячейки для дней предыдущего месяца
+    for _ in range(first_weekday):
+        days.append({'date': None, 'day': '',
+                    'has_booking': False, 'type': None})
+
+    # Дни текущего месяца
+    for day in range(1, num_days + 1):
+        current_date = date(year, month, day)
+        day_data = {
+            'date': current_date,
+            'day': day,
+            'has_booking': current_date in active_dates or current_date in archived_dates,
+            'type': None,
+            'is_today': current_date == date.today(),
+        }
+
+        if current_date in active_dates:
+            day_data['type'] = 'active'
+        elif current_date in archived_dates:
+            day_data['type'] = 'archived'
+
+        days.append(day_data)
+
+    return days
+
+
+def get_dashboard_calendar_days(year, month, bookings):
+    """Генерирует дни месяца для календаря на главной (только активные)"""
     first_day = date(year, month, 1)
     _, num_days = calendar.monthrange(year, month)
     first_weekday = first_day.weekday()
@@ -97,7 +136,7 @@ def master_dashboard(request):
         selected_date = today.date().isoformat()
 
     # Генерируем дни для календаря
-    calendar_days = get_calendar_days(
+    calendar_days = get_dashboard_calendar_days(
         current_year, current_month, month_bookings)
 
     # Получаем последние отклики на посты (заглушка)
@@ -215,3 +254,131 @@ def update_profile(request):
         return redirect('master_dashboard')
 
     return redirect('master_dashboard')
+
+
+@login_required
+def master_bookings(request):
+    # Проверяем роль
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа к этой странице')
+        return redirect('home')
+
+    # Получаем профиль мастера
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    # Текущая дата и время
+    now = timezone.now()
+    today = now.date()
+
+    # Получаем месяц и год из GET параметров
+    try:
+        current_month = int(request.GET.get('month', now.month))
+        current_year = int(request.GET.get('year', now.year))
+    except ValueError:
+        current_month = now.month
+        current_year = now.year
+
+    # Все записи мастера
+    all_bookings = Booking.objects.filter(
+        master=master_profile
+    ).select_related('client')
+
+    # Разделяем на активные и архивные
+    active_bookings = []
+    archived_bookings = []
+
+    for booking in all_bookings:
+        booking_datetime = datetime.combine(booking.date, booking.time)
+        booking_datetime = timezone.make_aware(booking_datetime)
+
+        if booking.date > today or (booking.date == today and booking.time > now.time()):
+            if booking.status == 'active':
+                active_bookings.append(booking)
+            else:
+                archived_bookings.append(booking)
+        else:
+            archived_bookings.append(booking)
+
+    # Фильтруем для отображения в списках
+    active_display = [b for b in active_bookings if b.date >= today]
+    archived_display = [
+        b for b in archived_bookings if b.date < today or b.status != 'active']
+
+    # Получаем записи для календаря за выбранный месяц
+    month_active = [b for b in active_bookings if b.date.year ==
+                    current_year and b.date.month == current_month]
+    month_archived = [b for b in archived_bookings if b.date.year ==
+                      current_year and b.date.month == current_month]
+
+    # Генерируем дни для календаря
+    calendar_days = get_calendar_days(
+        current_year, current_month, month_active, month_archived)
+
+    context = {
+        'active_bookings': active_display,
+        'archived_bookings': archived_display,
+        'calendar_days': calendar_days,
+        'current_month': current_month,
+        'current_year': current_year,
+        'month_name': get_month_name(current_month),
+        'now': now,
+        'today': today,
+    }
+
+    return render(request, 'masters/bookings.html', context)
+
+
+@login_required
+def cancel_booking(request, booking_id):
+    """Отмена записи мастером"""
+    if request.method == 'POST':
+        booking = get_object_or_404(Booking, id=booking_id)
+
+        # Проверяем, что мастер имеет отношение к записи
+        if booking.master.user != request.user:
+            messages.error(request, 'У вас нет прав для отмены этой записи')
+            return redirect('master_bookings')
+
+        # Проверяем, можно ли отменить
+        if not booking.can_cancel:
+            messages.error(
+                request, 'Нельзя отменить запись менее чем за 24 часа')
+            return redirect('master_bookings')
+
+        booking.status = 'cancelled'
+        booking.save()
+
+        messages.success(request, 'Запись успешно отменена')
+
+    return redirect('master_bookings')
+
+
+@login_required
+def reschedule_booking(request, booking_id):
+    """Перенос записи мастером"""
+    if request.method == 'POST':
+        booking = get_object_or_404(Booking, id=booking_id)
+
+        # Проверяем права
+        if booking.master.user != request.user:
+            messages.error(request, 'У вас нет прав для переноса этой записи')
+            return redirect('master_bookings')
+
+        # Проверяем, можно ли перенести
+        if not booking.can_reschedule:
+            messages.error(
+                request, 'Нельзя перенести запись менее чем за 24 часа')
+            return redirect('master_bookings')
+
+        new_date = request.POST.get('new_date')
+        new_time = request.POST.get('new_time')
+
+        if new_date and new_time:
+            booking.date = new_date
+            booking.time = new_time
+            booking.save()
+            messages.success(request, 'Запись успешно перенесена')
+        else:
+            messages.error(request, 'Укажите новую дату и время')
+
+    return redirect('master_bookings')
