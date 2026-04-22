@@ -7,6 +7,12 @@ from bookings.models import Booking
 from datetime import datetime, date
 import calendar
 from django.utils import timezone
+from reviews.models import Review
+from bookings.models import PostResponse
+import json
+from django.db.models import Avg
+from notifications.models import Notification
+from .models import MasterProfile
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -45,6 +51,14 @@ def get_calendar_days(year, month, active_bookings, archived_bookings):
         days.append(day_data)
 
     return days
+
+
+def get_month_name(month):
+    months = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ]
+    return months[month - 1]
 
 
 def get_dashboard_calendar_days(year, month, bookings):
@@ -148,6 +162,16 @@ def master_dashboard(request):
         if booking.client not in recent_clients:
             recent_clients.append(booking.client)
 
+    recent_responses = PostResponse.objects.filter(
+        master=master_profile
+    ).select_related('post', 'post__client').order_by('-created_at')[:3]
+
+    upcoming_bookings = Booking.objects.filter(
+        master=master_profile,
+        date__gte=timezone.now().date(),
+        status='active'
+    ).order_by('date', 'time')[:5]
+
     context = {
         'master': master_profile,
         'user': request.user,
@@ -160,6 +184,7 @@ def master_dashboard(request):
         'current_month': current_month,
         'current_year': current_year,
         'month_name': get_month_name(current_month),
+        'upcoming_bookings': upcoming_bookings,
     }
 
     return render(request, 'masters/dashboard.html', context)
@@ -258,13 +283,18 @@ def update_profile(request):
 
 @login_required
 def master_bookings(request):
+    """Страница всех записей мастера"""
     # Проверяем роль
     if request.user.role != 'master':
         messages.error(request, 'У вас нет доступа к этой странице')
         return redirect('home')
 
     # Получаем профиль мастера
-    master_profile = MasterProfile.objects.get(user=request.user)
+    try:
+        master_profile = MasterProfile.objects.get(user=request.user)
+    except MasterProfile.DoesNotExist:
+        messages.error(request, 'Профиль мастера не найден')
+        return redirect('home')
 
     # Текущая дата и время
     now = timezone.now()
@@ -281,28 +311,23 @@ def master_bookings(request):
     # Все записи мастера
     all_bookings = Booking.objects.filter(
         master=master_profile
-    ).select_related('client')
+    ).select_related('client', 'client__user').order_by('date', 'time')
 
     # Разделяем на активные и архивные
     active_bookings = []
     archived_bookings = []
 
     for booking in all_bookings:
-        booking_datetime = datetime.combine(booking.date, booking.time)
-        booking_datetime = timezone.make_aware(booking_datetime)
-
-        if booking.date > today or (booking.date == today and booking.time > now.time()):
-            if booking.status == 'active':
+        # Запись считается активной, если:
+        # 1. Статус 'active'
+        # 2. Дата сегодня или позже (или сегодня и время еще не прошло)
+        if booking.status == 'active':
+            if booking.date > today or (booking.date == today and booking.time > now.time()):
                 active_bookings.append(booking)
             else:
                 archived_bookings.append(booking)
         else:
             archived_bookings.append(booking)
-
-    # Фильтруем для отображения в списках
-    active_display = [b for b in active_bookings if b.date >= today]
-    archived_display = [
-        b for b in archived_bookings if b.date < today or b.status != 'active']
 
     # Получаем записи для календаря за выбранный месяц
     month_active = [b for b in active_bookings if b.date.year ==
@@ -315,8 +340,8 @@ def master_bookings(request):
         current_year, current_month, month_active, month_archived)
 
     context = {
-        'active_bookings': active_display,
-        'archived_bookings': archived_display,
+        'active_bookings': active_bookings,
+        'archived_bookings': archived_bookings,
         'calendar_days': calendar_days,
         'current_month': current_month,
         'current_year': current_year,
@@ -365,7 +390,7 @@ def reschedule_booking(request, booking_id):
             return redirect('master_bookings')
 
         # Проверяем, можно ли перенести
-        if not booking.can_reschedule:
+        if not booking.can_cancel:
             messages.error(
                 request, 'Нельзя перенести запись менее чем за 24 часа')
             return redirect('master_bookings')
@@ -382,3 +407,274 @@ def reschedule_booking(request, booking_id):
             messages.error(request, 'Укажите новую дату и время')
 
     return redirect('master_bookings')
+
+
+@login_required
+def masters_list(request):
+    """Список всех мастеров - показываем всех, без фильтров"""
+
+    # Получаем ВСЕХ мастеров, без фильтрации
+    masters = MasterProfile.objects.all().select_related('user')
+
+    # Для каждого мастера собираем дополнительную информацию
+    masters_data = []
+    for master in masters:
+        # Получаем портфолио (если есть)
+        try:
+            portfolio = master.portfolio_set.all()[:5]
+        except:
+            portfolio = []
+
+        # Получаем услуги мастера
+        try:
+            services = master.services.filter(is_active=True)[:3]
+        except:
+            services = []
+
+        # Средняя стоимость услуг
+        try:
+            avg_price = master.services.filter(is_active=True).aggregate(Avg('price'))[
+                'price__avg'] or 0
+        except:
+            avg_price = 0
+
+        # Рейтинг и количество отзывов
+        try:
+            reviews = Review.objects.filter(
+                master=master, is_approved=True, is_blocked=False)
+            rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+            reviews_count = reviews.count()
+        except:
+            rating = 0
+            reviews_count = 0
+
+        masters_data.append({
+            'id': master.id,
+            'display_name': master.display_name or "Мастер",
+            'address': master.address_text or "Адрес не указан",
+            'avatar': master.avatar,
+            'bio': master.bio,
+            'portfolio': portfolio,
+            'services': services,
+            'avg_price': avg_price,
+            'rating': rating,
+            'reviews_count': reviews_count,
+            'user': master.user,
+        })
+
+    context = {
+        'masters': masters_data,
+    }
+
+    return render(request, 'masters/masters_list.html', context)
+
+
+@login_required
+def master_responses(request):
+    """Страница всех откликов мастера"""
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа к этой странице')
+        return redirect('home')
+
+    master_profile = request.user.master_profile
+    responses = PostResponse.objects.filter(
+        master=master_profile
+    ).select_related('post', 'post__client').order_by('-created_at')
+
+    context = {
+        'responses': responses,
+        'master': master_profile,
+    }
+
+    return render(request, 'masters/responses.html', context)
+
+
+@login_required
+def update_response(request, response_id):
+    """Обновить отклик (изменить предложение)"""
+    if request.method == 'POST':
+        response = get_object_or_404(PostResponse, id=response_id)
+
+        if response.master.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('master_responses')
+
+        # Проверяем, можно ли редактировать
+        if not response.can_edit:
+            messages.error(
+                request, 'Нельзя редактировать уже обработанный отклик')
+            return redirect('master_responses')
+
+        response.message = request.POST.get('message', response.message)
+        response.proposed_price = request.POST.get(
+            'proposed_price', response.proposed_price)
+        response.proposed_date = request.POST.get(
+            'proposed_date', response.proposed_date)
+        response.proposed_time = request.POST.get(
+            'proposed_time', response.proposed_time)
+        response.save()
+
+        messages.success(request, 'Отклик обновлен')
+
+    return redirect('master_responses')
+
+
+@login_required
+def cancel_response(request, response_id):
+    """Отменить отклик (мастером)"""
+    if request.method == 'POST':
+        response = get_object_or_404(PostResponse, id=response_id)
+
+        if response.master.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('master_responses')
+
+        # Меняем статус на cancelled вместо удаления
+        response.status = 'cancelled'
+        response.save()
+
+        # Создаем уведомление для клиента
+        Notification.objects.create(
+            user=response.post.client.user,
+            notification_type='response_rejected',
+            title='Отклик отменен',
+            message=f'Мастер {response.master.display_name} отменил свой отклик на ваш пост',
+            link=f'/client/responses/'
+        )
+
+        messages.success(request, 'Отклик отменен')
+
+    return redirect('master_responses')
+
+
+@login_required
+def master_clients(request):
+    """Страница всех клиентов мастера"""
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа к этой странице')
+        return redirect('home')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    # Получаем уникальных клиентов из записей
+    bookings = Booking.objects.filter(
+        master=master_profile
+    ).select_related('client').order_by('-created_at')
+
+    clients = {}
+    for booking in bookings:
+        if booking.client.id not in clients:
+            clients[booking.client.id] = {
+                'client': booking.client,
+                'last_booking': booking,
+                'total_bookings': 1,
+                'total_spent': booking.price
+            }
+        else:
+            clients[booking.client.id]['total_bookings'] += 1
+            clients[booking.client.id]['total_spent'] += booking.price
+
+    context = {
+        'clients': list(clients.values()),
+        'master': master_profile,
+    }
+
+    return render(request, 'masters/clients.html', context)
+
+
+@login_required
+def master_portfolio(request):
+    """Страница портфолио мастера"""
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа к этой странице')
+        return redirect('home')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    # Получаем портфолио мастера
+    try:
+        portfolio_items = master_profile.portfolio.all()
+    except:
+        portfolio_items = []
+
+    context = {
+        'portfolio_items': portfolio_items,
+        'master': master_profile,
+    }
+
+    return render(request, 'masters/portfolio.html', context)
+
+
+@login_required
+def master_reviews(request):
+    """Страница всех отзывов о мастере"""
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа к этой странице')
+        return redirect('home')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+    reviews = Review.objects.filter(
+        master=master_profile,
+        is_approved=True,
+        is_blocked=False
+    ).select_related('client').order_by('-created_at')
+
+    context = {
+        'reviews': reviews,
+        'master': master_profile,
+    }
+
+    return render(request, 'masters/reviews.html', context)
+
+
+@login_required
+def reschedule_booking(request, booking_id):
+    """Перенести запись"""
+    if request.method == 'POST':
+        booking = get_object_or_404(Booking, id=booking_id)
+
+        # Проверяем права
+        if request.user.role == 'client' and booking.client.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+        elif request.user.role == 'master' and booking.master.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('master_bookings')
+
+        # Проверяем, можно ли перенести
+        if not booking.can_cancel:
+            messages.error(
+                request, 'Нельзя перенести запись менее чем за 24 часа')
+            return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+
+        new_date = request.POST.get('new_date')
+        new_time = request.POST.get('new_time')
+
+        if new_date and new_time:
+            booking.date = new_date
+            booking.time = new_time
+            booking.save()
+
+            # Создаем уведомление для другой стороны
+            if request.user.role == 'client':
+                Notification.objects.create(
+                    user=booking.master.user,
+                    notification_type='booking_rescheduled',
+                    title='Запись перенесена',
+                    message=f'Клиент {booking.client.full_name} перенес запись на {booking.date} в {booking.time}',
+                    link=f'/master/bookings/'
+                )
+            else:
+                Notification.objects.create(
+                    user=booking.client.user,
+                    notification_type='booking_rescheduled',
+                    title='Запись перенесена',
+                    message=f'Мастер {booking.master.display_name} перенес запись на {booking.date} в {booking.time}',
+                    link=f'/client/bookings/'
+                )
+
+            messages.success(request, 'Запись успешно перенесена')
+        else:
+            messages.error(request, 'Укажите новую дату и время')
+
+    return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')

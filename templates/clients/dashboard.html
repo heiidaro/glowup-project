@@ -68,15 +68,60 @@
     </div>
 </div>
 
+<!-- Блок с предстоящими записями -->
+<div class="dashboard-card upcoming-bookings-card full-width">
+    <div class="card-header">
+        <h3>Предстоящие записи</h3>
+        <a href="{% url 'client_bookings' %}" class="view-all">Все</a>
+    </div>
+    <div class="card-content">
+        {% if upcoming_bookings %}
+            <div class="bookings-list">
+                {% for booking in upcoming_bookings %}
+                <div class="booking-item">
+                    <div class="booking-time">
+                        {{ booking.time|time:"H:i" }}
+                    </div>
+                    <div class="booking-master">
+                        <div class="master-avatar small">
+                            {% if booking.master.avatar %}
+                                <img src="{{ booking.master.avatar.url }}" alt="">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ booking.master.display_name|first|default:"М" }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="master-name">{{ booking.master.display_name }}</div>
+                    </div>
+                    <div class="booking-service">
+                        {{ booking.service }}
+                    </div>
+                    <div class="booking-price">
+                        {{ booking.price }} ₽
+                    </div>
+                    <div class="booking-status status-{{ booking.status }}">
+                        {{ booking.get_status_display }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Нет предстоящих записей</p>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Блок с откликами -->
 <div class="dashboard-card responses-card full-width">
     <div class="card-header">
-        <h3>Отклики</h3>
+        <h3>Отклики на мои посты</h3>
+        <a href="{% url 'client_responses' %}" class="view-all">Все</a>
     </div>
     <div class="card-content">
-        {% if responses %}
+        {% if recent_responses %}
             <div class="responses-list">
-                {% for response in responses %}
+                {% for response in recent_responses %}
                 <div class="response-item">
                     <div class="response-master">
                         <div class="master-avatar small">
@@ -84,35 +129,35 @@
                                 <img src="{{ response.master.avatar.url }}" alt="">
                             {% else %}
                                 <div class="avatar-placeholder">
-                                    {{ response.master.display_name|first|default:"?" }}
+                                    {{ response.master.display_name|first|default:"М" }}
                                 </div>
                             {% endif %}
                         </div>
                         <div class="master-name">{{ response.master.display_name }}</div>
                     </div>
-                    <div class="response-datetime">
-                        {{ response.proposed_date|date:"d.m.Y" }} {{ response.proposed_time|time:"H:i" }}
-                    </div>
-                    <div class="response-service">
-                        {{ response.post.service_category }}
-                    </div>
-                    <div class="response-price">
-                        {{ response.proposed_price }} ₽
+                    <div class="response-time">
+                        {{ response.time_ago }}
                     </div>
                     <div class="response-status status-{{ response.status }}">
                         {% if response.status == 'pending' %}
                             В ожидании
-                        {% elif response.status == 'approved' %}
-                            Подтвержден
-                        {% elif response.status == 'declined' %}
+                        {% elif response.status == 'accepted' %}
+                            Принят
+                        {% elif response.status == 'rejected' %}
                             Отклонен
+                        {% endif %}
+                    </div>
+                    <div class="response-actions">
+                        {% if response.status == 'pending' %}
+                            <button class="btn-accept" onclick="acceptResponse({{ response.id }})">Принять</button>
+                            <button class="btn-reject" onclick="rejectResponse({{ response.id }})">Отклонить</button>
                         {% endif %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
         {% else %}
-            <p class="empty-state">Откликов пока нет</p>
+            <p class="empty-state">Пока нет откликов на ваши посты</p>
         {% endif %}
     </div>
 </div>
@@ -589,6 +634,260 @@ body.modal-open {
     transform: scale(1.05);
     transition: all 0.2s ease;
 }
+
+/* Стили для предстоящих записей */
+.upcoming-bookings-card.full-width {
+    grid-column: 1 / -1;
+    margin-bottom: 24px;
+}
+
+.bookings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.booking-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.booking-time {
+    font-weight: 500;
+    color: #202020;
+    min-width: 60px;
+}
+
+.booking-master {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 2;
+}
+
+.master-name {
+    font-weight: 500;
+}
+
+.booking-service {
+    flex: 2;
+    color: #666;
+}
+
+.booking-price {
+    font-weight: 500;
+    color: #27ae60;
+    min-width: 80px;
+}
+
+.booking-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 100px;
+    text-align: center;
+}
+
+.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Стили для откликов */
+.responses-card.full-width {
+    grid-column: 1 / -1;
+    margin-bottom: 24px;
+}
+
+.responses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.response-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.response-master {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+}
+
+.master-name {
+    font-weight: 500;
+}
+
+.response-time {
+    font-size: 12px;
+    color: #666;
+    min-width: 100px;
+}
+
+.response-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-accepted {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.response-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.btn-accept, .btn-reject {
+    padding: 5px 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-accept {
+    background: #28a745;
+    color: white;
+}
+
+.btn-reject {
+    background: #dc3545;
+    color: white;
+}
+
+/* Стили для карточек */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.card-header h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: #202020;
+}
+
+.view-all {
+    color: #202020;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.card-content {
+    padding: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #999;
+    padding: 32px 0;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #e3e3db;
+}
+
+/* Стили для мастеров */
+.master-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.master-item:last-child {
+    border-bottom: none;
+}
+
+.master-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 12px;
+    background: #3a3a3a;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.master-avatar.small {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+}
+
+.master-avatar.mini {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+}
+
+.master-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.master-info h4 {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.master-info p {
+    font-size: 12px;
+    color: #666;
+}
 </style>
 
 <script>
@@ -616,6 +915,41 @@ function togglePassword(inputId, button) {
         input.type = 'password';
         icon.classList.remove('fa-eye-slash');
         icon.classList.add('fa-eye');
+    }
+}
+
+// Функции для откликов
+function acceptResponse(responseId) {
+    if (confirm('Принять этот отклик?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/client/accept-response/${responseId}/`;
+        
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function rejectResponse(responseId) {
+    if (confirm('Отклонить этот отклик?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/client/reject-response/${responseId}/`;
+        
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 
@@ -671,15 +1005,12 @@ document.addEventListener('DOMContentLoaded', function() {
         day.addEventListener('click', function() {
             const date = this.dataset.date;
             if (date) {
-                // Добавляем визуальный эффект клика
                 this.style.transform = 'scale(0.95)';
                 this.style.transition = 'all 0.1s ease';
                 
-                // Небольшая задержка для визуального отклика
                 setTimeout(() => {
                     const url = new URL(window.location.href);
                     url.searchParams.set('date', date);
-                    // Сохраняем текущий месяц и год
                     url.searchParams.set('month', document.getElementById('month-input').value);
                     url.searchParams.set('year', document.getElementById('year-input').value);
                     window.location.href = url.toString();

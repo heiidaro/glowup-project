@@ -1,0 +1,127 @@
+{% extends 'master_base.html' %}
+{% load static %}
+
+{% block title %}Портфолио{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Мое портфолио</h1>
+    <p>Все фотографии ваших работ</p>
+    <button class="btn-add" onclick="alert('Добавление фото в разработке')">
+        <i class="fas fa-plus"></i> Добавить фото
+    </button>
+</div>
+
+{% if portfolio_items %}
+    <div class="portfolio-grid">
+        {% for item in portfolio_items %}
+        <div class="portfolio-item">
+            <img src="{{ item.image.url }}" alt="Фото портфолио">
+            <div class="portfolio-item-overlay">
+                <button class="btn-delete" onclick="alert('Удаление в разработке')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-camera"></i>
+        <p>Портфолио пока пусто</p>
+        <button class="btn-primary" onclick="alert('Добавление фото в разработке')">Добавить фото</button>
+    </div>
+{% endif %}
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.page-header h1 {
+    color: var(--dark);
+    font-size: 28px;
+}
+
+.btn-add {
+    padding: 10px 20px;
+    background: var(--dark);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-add:hover {
+    background: var(--gray);
+}
+
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.portfolio-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.portfolio-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.portfolio-item:hover img {
+    transform: scale(1.05);
+}
+
+.portfolio-item-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.portfolio-item:hover .portfolio-item-overlay {
+    opacity: 1;
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+}
+</style>
+{% endblock %}

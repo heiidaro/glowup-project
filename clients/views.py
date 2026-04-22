@@ -1,11 +1,21 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import ClientProfile
+from .models import ClientProfile, ClientPost, ServiceTag
 from django.contrib import messages
 from datetime import datetime, date, timedelta
 import calendar
 from bookings.models import Booking
 from django.utils import timezone
+from .forms import ClientPostForm
+from django.db.models import Q
+from datetime import datetime
+from bookings.models import PostResponse
+from notifications.models import Notification
+from django.db import transaction
+from django.http import JsonResponse
+import json
+from masters.models import MasterProfile
+from django.contrib.auth import update_session_auth_hash
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -163,23 +173,40 @@ def client_dashboard(request):
         ).select_related('master')
         selected_date = today.date().isoformat()
 
-    # ИСПРАВЛЕНИЕ: используем правильную функцию для dashboard
+    # Генерируем дни для календаря
     calendar_days = get_dashboard_calendar_days(
         current_year, current_month, month_bookings)
+
+    # Получаем последних мастеров, к которым записывался клиент
+    recent_masters = MasterProfile.objects.filter(
+        bookings__client=client_profile
+    ).distinct()[:3]
+
+    # ПОЛУЧАЕМ ОТКЛИКИ НА ПОСТЫ КЛИЕНТА (Добавьте это)
+    recent_responses = PostResponse.objects.filter(
+        post__client=client_profile
+    ).select_related('master', 'post').order_by('-created_at')[:3]
+
+    upcoming_bookings = Booking.objects.filter(
+        client=client_profile,
+        date__gte=timezone.now().date(),
+        status='active'
+    ).order_by('date', 'time')[:5]
 
     context = {
         'client': client_profile,
         'user': request.user,
         'show_profile_modal': not client_profile.is_profile_completed,
         'recent_messages': [],
-        'recent_masters': [],
-        'responses': [],
+        'recent_masters': recent_masters,
+        'recent_responses': recent_responses,  # Добавьте это
         'selected_date_bookings': selected_date_bookings,
         'selected_date': selected_date,
         'calendar_days': calendar_days,
         'current_month': current_month,
         'current_year': current_year,
         'month_name': get_month_name(current_month),
+        'upcoming_bookings': upcoming_bookings,
     }
 
     return render(request, 'clients/dashboard.html', context)
@@ -290,8 +317,12 @@ def client_bookings(request):
 
     # Все записи клиента
     all_bookings = Booking.objects.filter(
-        client=client_profile
-    ).select_related('master')
+        client=client_profile).select_related('master')
+    print(
+        f"=== Всего записей для клиента {client_profile.id}: {all_bookings.count()} ===")
+    for b in all_bookings:
+        print(
+            f"  Запись {b.id}: дата={b.date}, статус={b.status}, мастер={b.master.display_name}")
 
     # Разделяем на активные и архивные
     active_bookings = []
@@ -399,6 +430,374 @@ def reschedule_booking(request, booking_id):
             booking.date = new_date
             booking.time = new_time
             booking.save()
+            messages.success(request, 'Запись успешно перенесена')
+        else:
+            messages.error(request, 'Укажите новую дату и время')
+
+    return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+
+
+@login_required
+def posts_list(request):
+    """Страница со всеми постами всех клиентов с фильтрацией"""
+
+    # Базовый запрос
+    posts = ClientPost.objects.filter(is_active=True).select_related(
+        'client', 'client__user'
+    ).prefetch_related('tags').order_by('-created_at')
+
+    # Фильтрация по тегам
+    tags_filter = request.GET.getlist('tags')
+    if tags_filter:
+        posts = posts.filter(tags__id__in=tags_filter).distinct()
+
+    # Фильтрация по дате
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+            posts = posts.filter(preferred_date__gte=date_from_obj)
+        except:
+            pass
+
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+            posts = posts.filter(preferred_date__lte=date_to_obj)
+        except:
+            pass
+
+    # Фильтрация по цене
+    price_from = request.GET.get('price_from')
+    price_to = request.GET.get('price_to')
+
+    if price_from:
+        try:
+            price_from_val = float(price_from)
+            posts = posts.filter(budget__gte=price_from_val)
+        except:
+            pass
+
+    if price_to:
+        try:
+            price_to_val = float(price_to)
+            posts = posts.filter(budget__lte=price_to_val)
+        except:
+            pass
+
+    # Получаем все теги для фильтра
+    all_tags = ServiceTag.objects.all()
+
+    # Сохраняем текущие параметры фильтрации для отображения в шаблоне
+    current_filters = {
+        'tags': request.GET.getlist('tags'),
+        'date_from': date_from,
+        'date_to': date_to,
+        'price_from': price_from,
+        'price_to': price_to,
+    }
+
+    user_responses = []
+    if request.user.role == 'master':
+        try:
+            master = request.user.master_profile
+            user_responses = PostResponse.objects.filter(
+                master=master).values_list('post_id', flat=True)
+        except:
+            pass
+
+    context = {
+        'posts': posts,
+        'user': request.user,
+        'all_tags': all_tags,
+        'current_filters': current_filters,
+        'user_responses': list(user_responses),
+        'is_master': request.user.role == 'master',
+    }
+
+    return render(request, 'clients/posts.html', context)
+
+
+@login_required
+def delete_post(request, post_id):
+    """Удаление поста"""
+    if request.method == 'POST':
+        post = get_object_or_404(ClientPost, id=post_id)
+
+        # Проверяем, что пост принадлежит текущему пользователю
+        if post.client.user != request.user:
+            messages.error(request, 'У вас нет прав для удаления этого поста')
+            return redirect('posts_list')
+
+        post.is_active = False
+        post.save()
+        messages.success(request, 'Пост успешно удален')
+
+    return redirect('posts_list')
+
+
+@login_required
+def create_post(request):
+    """Страница создания поста"""
+    if request.method == 'POST':
+        form = ClientPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.client = request.user.client_profile
+            post.save()
+            # Сохраняем теги (ManyToMany)
+            form.save_m2m()
+            messages.success(request, 'Пост успешно создан!')
+            return redirect('posts_list')
+    else:
+        form = ClientPostForm()
+
+    context = {
+        'form': form,
+    }
+
+    return render(request, 'clients/create_post.html', context)
+
+
+@login_required
+def report_post(request, post_id):
+    """Жалоба на пост"""
+    if request.method == 'POST':
+        post = get_object_or_404(ClientPost, id=post_id)
+        reason = request.POST.get('reason')
+
+        # Здесь можно сохранить жалобу в базу
+        messages.success(request, 'Жалоба отправлена модератору')
+
+    return redirect('posts_list')
+
+
+@login_required
+def toggle_response(request, post_id):
+    """Добавить или удалить отклик на пост"""
+    if request.method == 'POST':
+        # Проверяем, что пользователь - мастер
+        if request.user.role != 'master':
+            return JsonResponse({'error': 'Только мастера могут откликаться'}, status=403)
+
+        try:
+            data = json.loads(request.body)
+            message = data.get('message', '')
+            proposed_price = data.get('proposed_price')
+            proposed_date = data.get('proposed_date')
+            proposed_time = data.get('proposed_time')
+
+            post = ClientPost.objects.get(id=post_id, is_active=True)
+            master = request.user.master_profile
+
+            # Проверяем, что пост не принадлежит этому мастеру
+            if post.client.user == request.user:
+                return JsonResponse({'error': 'Нельзя откликаться на свой пост'}, status=403)
+
+            # Проверяем, есть ли уже отклик
+            existing_response = PostResponse.objects.filter(
+                post=post, master=master).first()
+
+            if existing_response:
+                # Если отклик уже был, удаляем его
+                existing_response.delete()
+                action = 'removed'
+            else:
+                # Создаем новый отклик
+                with transaction.atomic():
+                    response = PostResponse.objects.create(
+                        post=post,
+                        master=master,
+                        message=message,
+                        proposed_price=proposed_price,
+                        proposed_date=proposed_date,
+                        proposed_time=proposed_time
+                    )
+
+                    # Создаем уведомление для клиента
+                    Notification.objects.create(
+                        user=post.client.user,
+                        notification_type='response',
+                        title='Новый отклик на пост',
+                        message=f'{master.display_name} откликнулся на ваш пост "{post.description[:50]}..."',
+                        link=f'/client/responses/'
+                    )
+
+                action = 'added'
+
+            # Получаем актуальное количество откликов
+            responses_count = post.responses.count()
+
+            return JsonResponse({
+                'action': action,
+                'count': responses_count,
+                'post_id': post_id
+            })
+
+        except ClientPost.DoesNotExist:
+            return JsonResponse({'error': 'Пост не найден'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Метод не разрешен'}, status=405)
+
+
+@login_required
+def client_responses(request):
+    """Страница откликов на посты клиента"""
+    if request.user.role != 'client':
+        messages.error(request, 'У вас нет доступа к этой странице')
+        return redirect('home')
+
+    client_profile = request.user.client_profile
+    responses = PostResponse.objects.filter(
+        post__client=client_profile
+    ).select_related('master', 'post').order_by('-created_at')
+
+    context = {
+        'responses': responses,
+        'client': client_profile,
+    }
+
+    return render(request, 'clients/responses.html', context)
+
+
+@login_required
+def accept_response(request, response_id):
+    """Принять отклик и создать запись"""
+    if request.method == 'POST':
+        response = get_object_or_404(PostResponse, id=response_id)
+
+        if response.post.client.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('client_responses')
+
+        if response.status != 'pending':
+            messages.error(request, 'Этот отклик уже обработан')
+            return redirect('client_responses')
+
+        # Обновляем статус
+        response.status = 'accepted'
+        response.save()
+
+        # Получаем название услуги из тегов
+        service_name = "Услуга"
+        if response.post.tags.exists():
+            service_name = response.post.tags.first().name
+
+        # Убедитесь, что дата и время определены
+        booking_date = response.proposed_date or response.post.preferred_date
+        booking_time = response.proposed_time or response.post.preferred_time
+
+        # Создаем запись
+        booking = Booking.objects.create(
+            client=response.post.client,
+            master=response.master,
+            service=service_name,
+            date=booking_date,
+            time=booking_time,
+            price=response.proposed_price or response.post.budget or 0,
+            status='active'
+        )
+
+        print(
+            f"Создана запись: ID={booking.id}, Client={booking.client.id}, Master={booking.master.id}, Date={booking.date}")
+
+        # Создаем уведомление для мастера
+        Notification.objects.create(
+            user=response.master.user,
+            notification_type='response_accepted',
+            title='Ваш отклик принят',
+            message=f'Клиент {response.post.client.full_name} принял ваш отклик. Создана запись на {booking.date} в {booking.time}',
+            link=f'/master/bookings/'
+        )
+
+        messages.success(
+            request, f'Отклик принят! Создана запись на {booking.date} в {booking.time}')
+
+    return redirect('client_responses')
+
+
+@login_required
+def reject_response(request, response_id):
+    """Отклонить отклик"""
+    if request.method == 'POST':
+        response = get_object_or_404(PostResponse, id=response_id)
+
+        if response.post.client.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('client_responses')
+
+        # Проверяем, можно ли отклонить (только если статус pending)
+        if response.status != 'pending':
+            messages.error(request, 'Этот отклик уже обработан')
+            return redirect('client_responses')
+
+        response.status = 'rejected'
+        response.save()
+
+        # Создаем уведомление для мастера
+        Notification.objects.create(
+            user=response.master.user,
+            notification_type='response_rejected',
+            title='Ваш отклик отклонен',
+            message=f'Клиент {response.post.client.full_name} отклонил ваш отклик на пост',
+            link=f'/master/responses/'
+        )
+
+        messages.success(request, 'Отклик отклонен')
+
+    return redirect('client_responses')
+
+
+@login_required
+def reschedule_booking(request, booking_id):
+    """Перенести запись"""
+    if request.method == 'POST':
+        booking = get_object_or_404(Booking, id=booking_id)
+
+        # Проверяем права
+        if request.user.role == 'client' and booking.client.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+        elif request.user.role == 'master' and booking.master.user != request.user:
+            messages.error(request, 'У вас нет прав')
+            return redirect('master_bookings')
+
+        # Проверяем, можно ли перенести
+        if not booking.can_cancel:
+            messages.error(
+                request, 'Нельзя перенести запись менее чем за 24 часа')
+            return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+
+        new_date = request.POST.get('new_date')
+        new_time = request.POST.get('new_time')
+
+        if new_date and new_time:
+            booking.date = new_date
+            booking.time = new_time
+            booking.save()
+
+            # Создаем уведомление для другой стороны
+            if request.user.role == 'client':
+                Notification.objects.create(
+                    user=booking.master.user,
+                    notification_type='booking_rescheduled',
+                    title='Запись перенесена',
+                    message=f'Клиент {booking.client.full_name} перенес запись на {booking.date} в {booking.time}',
+                    link=f'/master/bookings/'
+                )
+            else:
+                Notification.objects.create(
+                    user=booking.client.user,
+                    notification_type='booking_rescheduled',
+                    title='Запись перенесена',
+                    message=f'Мастер {booking.master.display_name} перенес запись на {booking.date} в {booking.time}',
+                    link=f'/client/bookings/'
+                )
+
             messages.success(request, 'Запись успешно перенесена')
         else:
             messages.error(request, 'Укажите новую дату и время')

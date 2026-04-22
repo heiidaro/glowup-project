@@ -11,7 +11,6 @@ from .models import PendingSignup
 from .models import PasswordResetToken
 
 
-
 def generate_code(length=6) -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(length))
 
@@ -19,7 +18,8 @@ def generate_code(length=6) -> str:
 def send_verification_email(email: str, code: str) -> None:
     subject = "Glow Up — код подтверждения"
     message = f"Ваш код подтверждения: {code}\nКод действует 10 минут."
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or "no-reply@glowup.local"
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL",
+                         None) or "no-reply@glowup.local"
     send_mail(subject, message, from_email, [email], fail_silently=False)
 
 
@@ -64,7 +64,8 @@ def verify_pending_code(pending: PendingSignup, code: str) -> bool:
 def send_verification_email(email: str, code: str) -> None:
     subject = "Glow Up — код подтверждения"
     message = f"Ваш код подтверждения: {code}\nКод действует 10 минут."
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or "no-reply@glowup.local"
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL",
+                         None) or "no-reply@glowup.local"
     send_mail(subject, message, from_email, [email], fail_silently=False)
 
 
@@ -102,7 +103,8 @@ def verify_code(user, channel: str, code: str, purpose: str = "register") -> boo
 def send_password_reset_email(email: str, reset_link: str) -> None:
     subject = "Glow Up — восстановление пароля"
     message = f"Чтобы сменить пароль, перейдите по ссылке:\n{reset_link}\n\nСсылка действует 20 минут."
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or "no-reply@glowup.local"
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL",
+                         None) or "no-reply@glowup.local"
     send_mail(subject, message, from_email, [email], fail_silently=False)
 
 
@@ -112,7 +114,8 @@ def send_password_reset_sms_stub(phone: str, reset_link: str) -> None:
 
 def create_and_send_password_reset(user, channel: str, request) -> None:
     # пометить старые как использованные (опционально)
-    PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
+    PasswordResetToken.objects.filter(
+        user=user, is_used=False).update(is_used=True)
 
     prt = PasswordResetToken.objects.create(
         user=user,

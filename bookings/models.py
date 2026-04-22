@@ -7,11 +7,10 @@ from django.utils import timezone
 class Booking(models.Model):
     """Запись на услугу"""
     STATUS_CHOICES = [
-        ('pending', 'В ожидании'),
-        ('approved', 'Подтвержден'),
-        ('declined', 'Отклонен'),
-        ('completed', 'Завершен'),
-        ('cancelled', 'Отменен'),
+        ('active', 'Активная'),
+        ('completed', 'Завершена'),
+        ('cancelled', 'Отменена'),
+        ('expired', 'Просрочена'),
     ]
 
     client = models.ForeignKey(
@@ -29,7 +28,14 @@ class Booking(models.Model):
     time = models.TimeField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default='pending')
+        max_length=20, choices=STATUS_CHOICES, default='active')
+    response = models.OneToOneField(
+        'PostResponse',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='booking'
+    )  # Связь с откликом
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -75,26 +81,110 @@ class Booking(models.Model):
         return self.can_cancel  # То же условие
 
 
-# class BookingResponse(models.Model):
-#     """Отклик мастера на пост клиента"""
-#     STATUS_CHOICES = [
-#         ('pending', 'В ожидании'),
-#         ('approved', 'Подтвержден'),
-#         ('declined', 'Отклонен'),
-#     ]
+class BookingResponse(models.Model):
+    """Отклик мастера на пост клиента"""
+    STATUS_CHOICES = [
+        ('pending', 'В ожидании'),
+        ('approved', 'Подтвержден'),
+        ('declined', 'Отклонен'),
+    ]
 
-#     # Используем строку вместо прямого импорта
-#     post = models.ForeignKey(
-#         'clients.ClientPost', on_delete=models.CASCADE, related_name='responses')
-#     master = models.ForeignKey(
-#         'masters.MasterProfile', on_delete=models.CASCADE, related_name='responses')
-#     message = models.TextField()
-#     proposed_price = models.DecimalField(max_digits=10, decimal_places=2)
-#     proposed_date = models.DateField()
-#     proposed_time = models.TimeField()
-#     status = models.CharField(
-#         max_length=20, choices=STATUS_CHOICES, default='pending')
-#     created_at = models.DateTimeField(auto_now_add=True)
+    post = models.ForeignKey(
+        'clients.ClientPost',
+        on_delete=models.CASCADE,
+        related_name='booking_responses'  # Изменено с 'responses'
+    )
+    master = models.ForeignKey(
+        'masters.MasterProfile',
+        on_delete=models.CASCADE,
+        related_name='booking_responses'
+    )
+    message = models.TextField()
+    proposed_price = models.DecimalField(max_digits=10, decimal_places=2)
+    proposed_date = models.DateField()
+    proposed_time = models.TimeField()
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
 
-#     def __str__(self):
-#         return f"{self.master.display_name} -> {self.post.title}"
+    class Meta:
+        db_table = 'bookings_bookingresponse'
+        ordering = ['-created_at']
+
+
+class PostResponse(models.Model):
+    """Отклик мастера на пост клиента"""
+    STATUS_CHOICES = [
+        ('pending', 'В ожидании'),
+        ('accepted', 'Принят'),
+        ('rejected', 'Отклонен'),
+        ('cancelled', 'Отменен мастером'),
+    ]
+
+    post = models.ForeignKey(
+        'clients.ClientPost',
+        on_delete=models.CASCADE,
+        related_name='responses'
+    )
+    master = models.ForeignKey(
+        'masters.MasterProfile',
+        on_delete=models.CASCADE,
+        related_name='post_responses'
+    )
+    message = models.TextField(blank=True, null=True)
+    proposed_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True)
+    proposed_date = models.DateField(null=True, blank=True)
+    proposed_time = models.TimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bookings_postresponse'
+        unique_together = ['post', 'master']
+        ordering = ['-created_at']
+
+    @property
+    def can_edit(self):
+        """Можно ли редактировать/отменять отклик"""
+        return self.status == 'pending'
+
+    @property
+    def time_ago(self):
+        from django.utils import timezone
+        now = timezone.now()
+        delta = now - self.created_at
+
+        if delta.days > 7:
+            return self.created_at.strftime('%d %B %Y г.')
+        elif delta.days >= 1:
+            return f"{delta.days} дн назад"
+        elif delta.seconds >= 3600:
+            hours = delta.seconds // 3600
+            return f"{hours} ч {delta.seconds % 3600 // 60} мин назад"
+        elif delta.seconds >= 60:
+            return f"{delta.seconds // 60} мин назад"
+        else:
+            return "только что"
+
+    def create_booking(self):
+        """Создать запись из принятого отклика"""
+        if self.status != 'accepted':
+            return None
+
+        from .models import Booking
+        booking = Booking.objects.create(
+            client=self.post.client,
+            master=self.master,
+            service=self.post.service_category,
+            date=self.proposed_date or self.post.preferred_date,
+            time=self.proposed_time or self.post.preferred_time,
+            price=self.proposed_price or self.post.budget or 0,
+            status='active'
+        )
+        return booking
+
+    def __str__(self):
+        return f"{self.master.display_name} -> {self.post.id}"

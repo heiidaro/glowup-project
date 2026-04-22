@@ -1,0 +1,107 @@
+{% extends 'master_base.html' %}
+{% load static %}
+
+{% block title %}Отзывы{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Отзывы клиентов</h1>
+    <p>Все отзывы о вашей работе</p>
+</div>
+
+{% if reviews %}
+    <div class="reviews-list">
+        {% for review in reviews %}
+        <div class="review-card">
+            <div class="review-header">
+                <div class="reviewer-avatar">
+                    {% if review.client.avatar %}
+                        <img src="{{ review.client.avatar.url }}" alt="">
+                    {% else %}
+                        <div class="avatar-placeholder">
+                            {{ review.client.full_name|first|default:"К" }}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="reviewer-info">
+                    <h3>{{ review.client.full_name|default:"Клиент" }}</h3>
+                    <div class="review-rating">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= review.rating %}
+                                <i class="fas fa-star"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="review-date">{{ review.created_at|date:"d.m.Y" }}</span>
+                </div>
+            </div>
+            <div class="review-content">
+                <p>{{ review.comment|default:"Отзыв без комментария" }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-star"></i>
+        <p>Пока нет отзывов</p>
+    </div>
+{% endif %}
+
+<style>
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.review-card {
+    background: var(--white);
+    border: 1px solid var(--light);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.review-header {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.reviewer-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--dark);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reviewer-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.review-rating {
+    color: #f39c12;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.review-date {
+    font-size: 12px;
+    color: var(--gray);
+}
+
+.review-content p {
+    color: var(--gray);
+    line-height: 1.5;
+}
+</style>
+{% endblock %}

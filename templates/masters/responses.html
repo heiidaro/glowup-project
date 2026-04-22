@@ -1,0 +1,491 @@
+{% extends 'master_base.html' %}
+{% load static %}
+
+{% block title %}Мои отклики{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Мои отклики</h1>
+    <p>Все ваши отклики на посты клиентов</p>
+</div>
+
+{% if responses %}
+    <div class="responses-list">
+        {% for response in responses %}
+        <div class="response-card">
+            <div class="response-header">
+                <div class="client-info">
+                    <div class="client-avatar">
+                        {% if response.post.client.avatar %}
+                            <img src="{{ response.post.client.avatar.url }}" alt="">
+                        {% else %}
+                            <div class="avatar-placeholder">
+                                {{ response.post.client.full_name|first|default:"К" }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="client-details">
+                        <h3>{{ response.post.client.full_name|default:"Клиент" }}</h3>
+                        <span class="response-time">{{ response.time_ago }}</span>
+                    </div>
+                </div>
+                <div class="response-status status-{{ response.status }}">
+                    {{ response.get_status_display }}
+                </div>
+            </div>
+            
+            <div class="post-preview">
+                <h4>Пост клиента:</h4>
+                <p>{{ response.post.description|truncatechars:150 }}</p>
+                <div class="post-meta">
+                    <span><i class="fas fa-tag"></i> 
+                        {% for tag in response.post.tags.all %}
+                            #{{ tag.name }}
+                        {% endfor %}
+                    </span>
+                    <span><i class="fas fa-calendar"></i> {{ response.post.preferred_date|date:"d.m.Y" }}</span>
+                    {% if response.post.budget %}
+                    <span><i class="fas fa-ruble-sign"></i> {{ response.post.budget }} ₽</span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'posts_list' %}?post={{ response.post.id }}" class="btn-link">Перейти к посту</a>
+            </div>
+            
+            <div class="response-details">
+                <h4>Ваше предложение:</h4>
+                <div class="proposal-info">
+                    {% if response.message %}
+                    <p><i class="fas fa-comment"></i> {{ response.message }}</p>
+                    {% endif %}
+                    <div class="proposal-price-time">
+                        {% if response.proposed_price %}
+                        <span><i class="fas fa-ruble-sign"></i> {{ response.proposed_price }} ₽</span>
+                        {% endif %}
+                        {% if response.proposed_date %}
+                        <span><i class="fas fa-calendar"></i> {{ response.proposed_date|date:"d.m.Y" }}</span>
+                        {% endif %}
+                        {% if response.proposed_time %}
+                        <span><i class="fas fa-clock"></i> {{ response.proposed_time|time:"H:i" }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            {% if response.can_edit %}
+            <div class="response-actions">
+                <button class="btn-edit" onclick="openEditModal({{ response.id }}, '{{ response.message|escapejs }}', '{{ response.proposed_price }}', '{{ response.proposed_date|date:"Y-m-d" }}', '{{ response.proposed_time|time:"H:i" }}')">
+                    <i class="fas fa-edit"></i> Изменить
+                </button>
+                <button class="btn-cancel" onclick="cancelResponse({{ response.id }})">
+                    <i class="fas fa-times"></i> Отказаться
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-comment-dots"></i>
+        <p>У вас пока нет откликов</p>
+        <a href="{% url 'posts_list' %}" class="btn-primary">Посмотреть посты</a>
+    </div>
+{% endif %}
+
+<!-- Модальное окно для редактирования -->
+<div id="editModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Редактировать отклик</h2>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="editForm" method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Сообщение</label>
+                <textarea name="message" id="edit_message" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Предлагаемая цена (₽)</label>
+                <input type="number" name="proposed_price" id="edit_price" step="100">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Предлагаемая дата</label>
+                    <input type="date" name="proposed_date" id="edit_date">
+                </div>
+                <div class="form-group">
+                    <label>Предлагаемое время</label>
+                    <input type="time" name="proposed_time" id="edit_time">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+:root {
+    --dark: #202020;
+    --gray: #3a3a3a;
+    --light: #e3e3db;
+    --white: #ffffff;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    color: var(--dark);
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.page-header p {
+    color: var(--gray);
+}
+
+.responses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.response-card {
+    background: var(--white);
+    border: 1px solid var(--light);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+}
+
+.response-card:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.response-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: var(--light);
+    border-bottom: 1px solid #ddd;
+}
+
+.client-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.client-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--dark);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.client-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.client-details h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.response-time {
+    font-size: 12px;
+    color: var(--gray);
+}
+
+.response-status {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-accepted {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.post-preview, .response-offer {
+    padding: 20px;
+    border-bottom: 1px solid var(--light);
+}
+
+.post-preview h4, .response-offer h4 {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.post-preview p {
+    color: var(--dark);
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.post-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.post-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--gray);
+}
+
+.btn-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.offer-details {
+    margin-top: 10px;
+}
+
+.offer-details p {
+    margin: 0 0 10px 0;
+}
+
+.offer-price-time {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.offer-price-time span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.response-actions {
+    padding: 15px 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-edit, .btn-cancel {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-edit {
+    background: var(--dark);
+    color: white;
+}
+
+.btn-edit:hover {
+    background: var(--gray);
+}
+
+.btn-cancel {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: #c82333;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: var(--light);
+    margin-bottom: 20px;
+}
+
+.empty-state p {
+    font-size: 18px;
+    color: var(--gray);
+    margin-bottom: 20px;
+}
+
+.btn-primary {
+    padding: 10px 24px;
+    background: var(--dark);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary:hover {
+    background: var(--gray);
+}
+
+/* Модальное окно */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: var(--white);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--light);
+    position: relative;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--gray);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--light);
+    border-radius: 6px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid var(--light);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-secondary {
+    padding: 8px 16px;
+    background: var(--light);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+</style>
+
+
+<script>
+function openEditModal(responseId, message, price, date, time) {
+    document.getElementById('editForm').action = `/master/update-response/${responseId}/`;
+    document.getElementById('edit_message').value = message || '';
+    document.getElementById('edit_price').value = price || '';
+    document.getElementById('edit_date').value = date || '';
+    document.getElementById('edit_time').value = time || '';
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function cancelResponse(responseId) {
+    if (confirm('Вы уверены, что хотите отменить отклик?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/master/cancel-response/${responseId}/`;
+        
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -14,29 +14,57 @@
     </div>
 </div>
 
+<!-- Верхние блоки (отклики и клиенты) -->
 <div class="dashboard-grid">
     <!-- Левый блок - Недавние отклики -->
     <div class="dashboard-card responses-card">
-        <div class="card-header">
-            <h3>Мои отклики</h3>
-            <a href="#" class="view-all">Все</a>
-        </div>
-        <div class="card-content">
-            {% if recent_responses %}
-                {% for response in recent_responses %}
-                <!-- Здесь будут отклики -->
-                {% endfor %}
-            {% else %}
-                <p class="empty-state">Откликов пока нет</p>
-            {% endif %}
-        </div>
+    <div class="card-header">
+        <h3>Мои отклики</h3>
+        <a href="{% url 'master_responses' %}" class="view-all">Все</a>
     </div>
+    <div class="card-content">
+        {% if recent_responses %}
+            <div class="responses-list">
+                {% for response in recent_responses %}
+                <div class="response-item">
+                    <div class="response-client">
+                        <div class="client-avatar small">
+                            {% if response.post.client.avatar %}
+                                <img src="{{ response.post.client.avatar.url }}" alt="">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ response.post.client.full_name|first|default:"К" }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="client-name">{{ response.post.client.full_name|default:"Клиент" }}</div>
+                    </div>
+                    <div class="response-time">
+                        {{ response.time_ago }}
+                    </div>
+                    <div class="response-status status-{{ response.status }}">
+                        {% if response.status == 'pending' %}
+                            В ожидании
+                        {% elif response.status == 'accepted' %}
+                            Принят
+                        {% elif response.status == 'rejected' %}
+                            Отклонен
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Откликов пока нет</p>
+        {% endif %}
+    </div>
+</div>
 
     <!-- Правый блок - Мои клиенты -->
     <div class="dashboard-card clients-card">
         <div class="card-header">
             <h3>Мои клиенты</h3>
-            <a href="#" class="view-all">Все</a>
+            <a href="{% url 'master_clients' %}" class="view-all">Все</a>
         </div>
         <div class="card-content">
             {% if recent_clients %}
@@ -68,11 +96,11 @@
     </div>
 </div>
 
-<!-- Блок с предстоящими записями -->
+<!-- Блок с предстоящими записями (на всю ширину) -->
 <div class="dashboard-card upcoming-bookings-card full-width">
     <div class="card-header">
         <h3>Предстоящие записи</h3>
-        <a href="#" class="view-all">Все</a>
+        <a href="{% url 'master_bookings' %}" class="view-all">Все</a>
     </div>
     <div class="card-content">
         {% if selected_date_bookings %}
@@ -109,6 +137,92 @@
         {% else %}
             <p class="empty-state">На сегодня записей нет</p>
         {% endif %}
+    </div>
+</div>
+
+<!-- Блоки Портфолио и Отзывы -->
+<div class="dashboard-grid">
+    <!-- Левая колонка - Портфолио -->
+    <div class="dashboard-card portfolio-card">
+        <div class="card-header">
+            <h3>Портфолио</h3>
+            <a href="{% url 'master_portfolio' %}" class="view-all" onclick="openPortfolioModal(); return false;">Все</a>
+        </div>
+        <div class="card-content">
+            {% if portfolio_items %}
+                <div class="portfolio-grid">
+                    {% for item in portfolio_items|slice:":4" %}
+                    <div class="portfolio-item">
+                        <img src="{{ item.image.url }}" alt="Фото портфолио">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if portfolio_items|length > 4 %}
+                <div class="portfolio-more">
+                    <span>+ еще {{ portfolio_items|length|add:"-4" }} фото</span>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-camera"></i>
+                    <p>Портфолио пока пусто</p>
+                    <button class="btn-add-portfolio" onclick="openPortfolioModal()">Добавить фото</button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Правая колонка - Отзывы -->
+    <div class="dashboard-card reviews-card">
+        <div class="card-header">
+            <h3>Отзывы</h3>
+            <a href="{% url 'master_reviews' %}" class="view-all" onclick="openReviewsModal(); return false;">Все</a>
+        </div>
+        <div class="card-content">
+            {% if reviews %}
+                {% for review in reviews|slice:":3" %}
+                <div class="review-item">
+                    <div class="review-header">
+                        <div class="reviewer-avatar">
+                            {% if review.client.avatar %}
+                                <img src="{{ review.client.avatar.url }}" alt="">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ review.client.full_name|first|default:"К" }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="reviewer-info">
+                            <h4>{{ review.client.full_name|default:"Клиент" }}</h4>
+                            <div class="review-rating">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <span class="review-date">{{ review.created_at|date:"d.m.Y" }}</span>
+                    </div>
+                    <div class="review-content">
+                        <p>{{ review.comment|truncatechars:100 }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if reviews|length > 3 %}
+                <div class="reviews-more">
+                    <a href="#" onclick="openReviewsModal(); return false;">Показать все отзывы ({{ reviews|length }})</a>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-star"></i>
+                    <p>Пока нет отзывов</p>
+                </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -358,7 +472,7 @@
 </form>
 
 <style>
-/* Стили для модальных окон - можно вынести в отдельный CSS файл */
+/* Стили для модальных окон */
 .modal {
     position: fixed;
     z-index: 1000;
@@ -690,6 +804,133 @@ body.modal-open {
     color: #721c24;
 }
 
+/* Стили для портфолио */
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.portfolio-item {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.portfolio-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.portfolio-item:hover img {
+    transform: scale(1.05);
+}
+
+.portfolio-more {
+    text-align: center;
+    margin-top: 10px;
+    color: #666;
+    font-size: 13px;
+}
+
+.btn-add-portfolio {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: #202020;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn-add-portfolio:hover {
+    background: #3a3a3a;
+}
+
+/* Стили для отзывов */
+.review-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #e3e3db;
+}
+
+.review-item:last-child {
+    border-bottom: none;
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.reviewer-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #202020;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reviewer-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.reviewer-info {
+    flex: 1;
+}
+
+.reviewer-info h4 {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #202020;
+}
+
+.review-rating {
+    display: flex;
+    gap: 2px;
+    color: #f39c12;
+    font-size: 12px;
+}
+
+.review-date {
+    font-size: 12px;
+    color: #666;
+}
+
+.review-content p {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.reviews-more {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.reviews-more a {
+    color: #202020;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.reviews-more a:hover {
+    text-decoration: underline;
+}
+
 /* Выделение выбранного дня в календаре */
 .calendar-day.selected {
     background-color: #3a3a3a;
@@ -698,6 +939,113 @@ body.modal-open {
     box-shadow: 0 0 0 2px white, 0 0 0 4px #202020;
     transform: scale(1.05);
     transition: all 0.2s ease;
+}
+
+.calendar-day.has-booking {
+    background-color: #e3e3db;
+    color: #202020;
+}
+
+.calendar-day.today {
+    border: 2px solid #202020;
+    font-weight: bold;
+}
+
+/* Общие стили */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.dashboard-card.full-width {
+    grid-column: 1 / -1;
+    margin-bottom: 24px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.card-header h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: #202020;
+}
+
+.view-all {
+    color: #202020;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.card-content {
+    padding: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #999;
+    padding: 32px 0;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #e3e3db;
+}
+
+/* Стили для откликов в дашборде мастера */
+.responses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.response-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.response-client {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+}
+
+.client-name {
+    font-weight: 500;
+}
+
+.response-time {
+    font-size: 12px;
+    color: #666;
+    min-width: 100px;
+}
+
+.response-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: auto;
 }
 </style>
 
@@ -711,6 +1059,14 @@ function openSettingsModal() {
 function closeSettingsModal() {
     document.getElementById('settingsModal').style.display = 'none';
     document.body.classList.remove('modal-open');
+}
+
+function openPortfolioModal() {
+     window.location.href = "{% url 'master_portfolio' %}";
+}
+
+function openReviewsModal() {
+    window.location.href = "{% url 'master_reviews' %}";
 }
 
 function togglePassword(inputId, button) {

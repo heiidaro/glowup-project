@@ -36,3 +36,22 @@ class MasterProfile(models.Model):
 
     def __str__(self):
         return self.display_name or f"Мастер {self.user_id}"
+
+
+class Portfolio(models.Model):
+    """Портфолио мастера"""
+    master = models.ForeignKey(
+        'MasterProfile',
+        on_delete=models.CASCADE,
+        related_name='portfolio'
+    )
+    image = models.ImageField(upload_to='portfolio/', blank=True, null=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'masters_portfolio'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.master.display_name} - {self.description or 'фото'}"

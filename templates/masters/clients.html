@@ -1,0 +1,165 @@
+{% extends 'master_base.html' %}
+{% load static %}
+
+{% block title %}Мои клиенты{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Мои клиенты</h1>
+    <p>Все клиенты, которые записывались к вам</p>
+</div>
+
+{% if clients %}
+    <div class="clients-grid">
+        {% for item in clients %}
+        <div class="client-card">
+            <div class="client-avatar large">
+                {% if item.client.avatar %}
+                    <img src="{{ item.client.avatar.url }}" alt="">
+                {% else %}
+                    <div class="avatar-placeholder">
+                        {{ item.client.full_name|first|default:"К" }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="client-info">
+                <h3>{{ item.client.full_name|default:"Клиент" }}</h3>
+                <p class="client-phone"><i class="fas fa-phone"></i> {{ item.client.user.phone|default:"не указан" }}</p>
+                <p class="client-email"><i class="fas fa-envelope"></i> {{ item.client.user.email }}</p>
+            </div>
+            <div class="client-stats">
+                <div class="stat">
+                    <span class="stat-value">{{ item.total_bookings }}</span>
+                    <span class="stat-label">записей</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ item.total_spent|floatformat:0 }} ₽</span>
+                    <span class="stat-label">потрачено</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ item.last_booking.date|date:"d.m.Y" }}</span>
+                    <span class="stat-label">последняя запись</span>
+                </div>
+            </div>
+            <div class="client-actions">
+                <button class="btn-chat" onclick="openChat({{ item.client.id }})">
+                    <i class="fas fa-comment"></i> Написать
+                </button>
+                <a href="{% url 'master_bookings' %}?client={{ item.client.id }}" class="btn-profile">
+                    <i class="fas fa-calendar"></i> Записи
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>У вас пока нет клиентов</p>
+    </div>
+{% endif %}
+
+<style>
+.clients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+}
+
+.client-card {
+    background: var(--white);
+    border: 1px solid var(--light);
+    border-radius: 12px;
+    padding: 20px;
+    transition: box-shadow 0.3s;
+}
+
+.client-card:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.client-avatar.large {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 15px;
+}
+
+.client-info {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.client-info h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.client-info p {
+    font-size: 13px;
+    color: var(--gray);
+    margin: 5px 0;
+}
+
+.client-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 15px 0;
+    border-top: 1px solid var(--light);
+    border-bottom: 1px solid var(--light);
+    margin-bottom: 15px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--gray);
+}
+
+.client-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-chat, .btn-profile {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.btn-chat {
+    background: var(--light);
+    color: var(--dark);
+    border: none;
+}
+
+.btn-chat:hover {
+    background: var(--dark);
+    color: white;
+}
+
+.btn-profile {
+    background: var(--dark);
+    color: white;
+    display: inline-block;
+}
+
+.btn-profile:hover {
+    background: var(--gray);
+}
+</style>
+{% endblock %}

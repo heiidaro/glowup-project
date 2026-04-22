@@ -102,10 +102,10 @@
                         {% if booking.can_cancel %}
                         <div class="booking-actions">
                             <button class="btn-outline" onclick="openRescheduleModal({{ booking.id }})">
-                                Перенести
+                                <i class="fas fa-calendar-alt"></i> Перенести
                             </button>
                             <button class="btn-danger" onclick="cancelBooking({{ booking.id }})">
-                                Отменить
+                                <i class="fas fa-times"></i> Отменить
                             </button>
                         </div>
                         {% else %}
@@ -121,7 +121,6 @@
                 <div class="empty-state">
                     <i class="far fa-calendar-times"></i>
                     <p>У вас нет активных записей</p>
-                    <!-- Убрана кнопка "Найти мастера" -->
                 </div>
             {% endif %}
         </div>
@@ -132,7 +131,7 @@
                 {% for booking in archived_bookings %}
                 <div class="booking-card archived">
                     <div class="booking-card-header">
-                        <h3>{{ booking.client.display_name }}</h3>
+                        <h3>{{ booking.client.full_name|default:"Клиент" }}</h3>
                         <span class="booking-status">{{ booking.get_status_display }}</span>
                     </div>
                     
@@ -690,10 +689,11 @@ function changeMonth(delta) {
 }
 
 function showTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
+    const btn = event.target;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
     });
-    event.target.classList.add('active');
+    btn.classList.add('active');
     
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');

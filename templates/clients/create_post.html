@@ -1,0 +1,324 @@
+{% extends 'base_no_sidebar.html' %}
+{% load static %}
+
+{% block title %}Создать пост{% endblock %}
+
+{% block content %}
+<div class="create-post-container">
+    <div class="create-post-header">
+        <h1>Создать пост</h1>
+        <p>Расскажите, какого мастера вы ищете</p>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" class="create-post-form">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="description">Описание <span class="required">*</span></label>
+            {{ form.description }}
+            {% if form.description.errors %}
+                <div class="error-message">{{ form.description.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label>Теги <span class="required">*</span></label>
+            <div class="tags-selection">
+                <div class="tags-grid">
+                    {% for tag in form.tags.field.queryset %}
+                    <label class="tag-checkbox">
+                        <input type="checkbox" name="tags" value="{{ tag.id }}" {% if tag.id in form.tags.value %}checked{% endif %}>
+                        <span class="tag-label">#{{ tag.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <small class="help-text">Выберите услуги, которые вас интересуют (можно несколько)</small>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="preferred_date">Желаемая дата <span class="required">*</span></label>
+                {{ form.preferred_date }}
+            </div>
+            
+            <div class="form-group">
+                <label for="preferred_time">Желаемое время</label>
+                {{ form.preferred_time }}
+                <small class="help-text">Необязательно</small>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="budget">Бюджет (₽)</label>
+            {{ form.budget }}
+            <small class="help-text">Сколько вы готовы заплатить</small>
+        </div>
+        
+        <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+                {{ form.is_anonymous }}
+                <span>Опубликовать анонимно</span>
+            </label>
+            <small class="help-text">Ваше имя не будет отображаться</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="image">Фото</label>
+            {{ form.image }}
+            <small class="help-text">Прикрепите фото (необязательно)</small>
+            <div id="image-preview" class="image-preview"></div>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{% url 'posts_list' %}" class="btn-secondary">Отмена</a>
+            <button type="submit" class="btn-primary">Опубликовать</button>
+        </div>
+    </form>
+</div>
+
+<style>
+:root {
+    --dark: #202020;
+    --gray: #3a3a3a;
+    --light: #e3e3db;
+    --white: #ffffff;
+}
+
+.create-post-container {
+    max-width: 700px;
+    margin: 0 auto;
+    background: var(--white);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+.create-post-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.create-post-header h1 {
+    color: var(--dark);
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.create-post-header p {
+    color: var(--gray);
+}
+
+.create-post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--dark);
+    margin-bottom: 8px;
+}
+
+.form-group .required {
+    color: #e74c3c;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 12px 15px;
+    border: 2px solid var(--light);
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--dark);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Стили для выбора тегов */
+.tags-selection {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+}
+
+.tags-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tag-checkbox {
+    display: inline-flex;
+    cursor: pointer;
+}
+
+.tag-checkbox input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.tag-label {
+    display: inline-block;
+    padding: 8px 16px;
+    background: white;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #3b82f6;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 1px solid #e2e8f0;
+}
+
+.tag-checkbox input:checked + .tag-label {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.tag-checkbox:hover .tag-label {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.help-text {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 5px;
+}
+
+.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.checkbox-label input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    font-weight: normal;
+    color: var(--dark);
+}
+
+.image-preview {
+    margin-top: 10px;
+    max-width: 200px;
+}
+
+.image-preview img {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background: var(--dark);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--gray);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--light);
+    color: var(--dark);
+}
+
+.btn-secondary:hover {
+    background: #d1d1c9;
+}
+
+.error-message {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .create-post-container {
+        padding: 20px;
+    }
+}
+</style>
+
+<script>
+// Предпросмотр фото
+document.getElementById('id_image').addEventListener('change', function(e) {
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = '';
+    
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

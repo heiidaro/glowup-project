@@ -21,7 +21,8 @@ class RegisterForm(forms.Form):
         widget=forms.RadioSelect
     )
     password1 = forms.CharField(label="Пароль", widget=forms.PasswordInput)
-    password2 = forms.CharField(label="Повтор пароля", widget=forms.PasswordInput)
+    password2 = forms.CharField(
+        label="Повтор пароля", widget=forms.PasswordInput)
 
     def clean(self):
         cleaned = super().clean()
@@ -50,7 +51,8 @@ class RegisterForm(forms.Form):
             digits = "7" + digits
 
         if not (digits.startswith("7") and len(digits) == 11):
-            raise forms.ValidationError("Телефон должен быть в формате +7 (___) ___-__-__")
+            raise forms.ValidationError(
+                "Телефон должен быть в формате +7 (___) ___-__-__")
 
         return f"+{digits}"
 
@@ -108,8 +110,10 @@ class PasswordResetRequestForm(forms.Form):
 
 
 class SetNewPasswordForm(forms.Form):
-    password1 = forms.CharField(label="Новый пароль", widget=forms.PasswordInput)
-    password2 = forms.CharField(label="Повтор пароля", widget=forms.PasswordInput)
+    password1 = forms.CharField(
+        label="Новый пароль", widget=forms.PasswordInput)
+    password2 = forms.CharField(
+        label="Повтор пароля", widget=forms.PasswordInput)
 
     def clean(self):
         cleaned = super().clean()

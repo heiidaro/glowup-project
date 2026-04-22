@@ -1,0 +1,490 @@
+{% extends 'base_no_sidebar.html' %}
+{% load static %}
+
+{% block title %}Мастера{% endblock %}
+
+{% block content %}
+<div class="masters-header">
+    <h1>Мастера</h1>
+    <p>Выберите мастера для записи на услугу</p>
+</div>
+
+<div class="masters-grid">
+    {% for master in masters %}
+    <div class="master-card">
+        <!-- Карусель с фото портфолио -->
+        <div class="portfolio-carousel">
+            {% if master.portfolio %}
+                <div class="carousel-container">
+                    {% for item in master.portfolio %}
+                        <div class="carousel-slide">
+                            <img src="{{ item.image.url }}" alt="{{ master.display_name }}">
+                        </div>
+                    {% endfor %}
+                </div>
+                <button class="carousel-prev" onclick="prevSlide(this)">❮</button>
+                <button class="carousel-next" onclick="nextSlide(this)">❯</button>
+                <div class="carousel-dots">
+                    {% for item in master.portfolio %}
+                        <span class="dot" onclick="currentSlide(this, {{ forloop.counter0 }})"></span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="portfolio-placeholder">
+                    <i class="fas fa-camera"></i>
+                    <span>Нет фото</span>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Теги услуг -->
+        <div class="master-services">
+            {% for service in master.services %}
+                <span class="service-tag">{{ service.name }}</span>
+            {% endfor %}
+            {% if not master.services %}
+                <span class="service-tag empty">Услуги не добавлены</span>
+            {% endif %}
+        </div>
+        
+        <!-- Информация о мастере -->
+        <div class="master-info">
+            <h3 class="master-name">{{ master.display_name }}</h3>
+            <div class="master-address">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ master.address }}</span>
+            </div>
+            <div class="master-price">
+                <i class="fas fa-ruble-sign"></i>
+                <span>от {{ master.avg_price|floatformat:0 }} ₽</span>
+            </div>
+            <div class="master-rating">
+                {% if master.rating > 0 %}
+                    <div class="stars">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= master.rating %}
+                                <i class="fas fa-star"></i>
+                            {% elif forloop.counter <= master.rating|add:0.5 %}
+                                <i class="fas fa-star-half-alt"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="rating-value">{{ master.rating|floatformat:1 }}</span>
+                    <span class="reviews-count">({{ master.reviews_count }} отзывов)</span>
+                {% else %}
+                    <span class="no-reviews">Отзывов нет</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Кнопки действий -->
+        <div class="master-actions">
+            <button class="btn-chat" onclick="openChat({{ master.id }})">
+                <i class="fas fa-comment"></i>
+                Написать
+            </button>
+            <button class="btn-profile" onclick="openProfile({{ master.id }})">
+                <i class="fas fa-user"></i>
+                Открыть профиль
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>Пока нет зарегистрированных мастеров</p>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+:root {
+    --dark: #202020;
+    --gray: #3a3a3a;
+    --light: #e3e3db;
+    --white: #ffffff;
+    --primary: #3498db;
+}
+
+.masters-header {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.masters-header h1 {
+    color: var(--dark);
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.masters-header p {
+    color: var(--gray);
+    font-size: 16px;
+}
+
+/* Сетка карточек */
+.masters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 30px;
+}
+
+/* Карточка мастера */
+.master-card {
+    background: var(--white);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.master-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Карусель */
+.portfolio-carousel {
+    position: relative;
+    height: 250px;
+    background: var(--light);
+    overflow: hidden;
+}
+
+.carousel-container {
+    height: 100%;
+    display: flex;
+    transition: transform 0.3s ease;
+}
+
+.carousel-slide {
+    min-width: 100%;
+    height: 100%;
+}
+
+.carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carousel-prev,
+.carousel-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s;
+    z-index: 10;
+}
+
+.carousel-prev:hover,
+.carousel-next:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+.carousel-prev {
+    left: 10px;
+}
+
+.carousel-next {
+    right: 10px;
+}
+
+.carousel-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.dot.active {
+    background: white;
+    width: 20px;
+    border-radius: 4px;
+}
+
+.portfolio-placeholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray);
+    background: var(--light);
+}
+
+.portfolio-placeholder i {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+/* Теги услуг */
+.master-services {
+    padding: 15px 20px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid var(--light);
+}
+
+.service-tag {
+    background: var(--light);
+    color: var(--dark);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.service-tag.empty {
+    background: none;
+    color: var(--gray);
+    font-style: italic;
+}
+
+/* Информация о мастере */
+.master-info {
+    padding: 15px 20px;
+}
+
+.master-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 10px;
+}
+
+.master-address,
+.master-price {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--gray);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.master-address i,
+.master-price i {
+    width: 20px;
+    color: var(--dark);
+}
+
+/* Рейтинг */
+.master-rating {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.stars {
+    display: inline-flex;
+    gap: 2px;
+    color: #f39c12;
+}
+
+.stars i {
+    font-size: 14px;
+}
+
+.rating-value {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.reviews-count {
+    color: var(--gray);
+    font-size: 13px;
+}
+
+.no-reviews {
+    color: var(--gray);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Кнопки действий */
+.master-actions {
+    padding: 15px 20px 20px;
+    display: flex;
+    gap: 12px;
+    border-top: 1px solid var(--light);
+}
+
+.btn-chat,
+.btn-profile {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-chat {
+    background: var(--light);
+    color: var(--dark);
+}
+
+.btn-chat:hover {
+    background: var(--dark);
+    color: var(--white);
+}
+
+.btn-profile {
+    background: var(--dark);
+    color: var(--white);
+}
+
+.btn-profile:hover {
+    background: var(--gray);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--gray);
+}
+
+.empty-state i {
+    font-size: 64px;
+    margin-bottom: 20px;
+    color: var(--light);
+}
+
+.empty-state p {
+    font-size: 18px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .masters-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+// Функции для карусели
+function prevSlide(button) {
+    const carousel = button.closest('.portfolio-carousel');
+    const container = carousel.querySelector('.carousel-container');
+    const slides = container.children;
+    const currentIndex = getCurrentIndex(container);
+    const newIndex = (currentIndex - 1 + slides.length) % slides.length;
+    updateCarousel(container, newIndex);
+    updateDots(carousel, newIndex);
+}
+
+function nextSlide(button) {
+    const carousel = button.closest('.portfolio-carousel');
+    const container = carousel.querySelector('.carousel-container');
+    const slides = container.children;
+    const currentIndex = getCurrentIndex(container);
+    const newIndex = (currentIndex + 1) % slides.length;
+    updateCarousel(container, newIndex);
+    updateDots(carousel, newIndex);
+}
+
+function currentSlide(dot, index) {
+    const carousel = dot.closest('.portfolio-carousel');
+    const container = carousel.querySelector('.carousel-container');
+    updateCarousel(container, index);
+    updateDots(carousel, index);
+}
+
+function getCurrentIndex(container) {
+    const transform = container.style.transform;
+    if (!transform) return 0;
+    const match = transform.match(/translateX\(-(\d+)%\)/);
+    if (match) {
+        return parseInt(match[1]) / 100;
+    }
+    return 0;
+}
+
+function updateCarousel(container, index) {
+    container.style.transform = `translateX(-${index * 100}%)`;
+}
+
+function updateDots(carousel, index) {
+    const dots = carousel.querySelectorAll('.dot');
+    dots.forEach((dot, i) => {
+        if (i === index) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+}
+
+// Инициализация каруселей при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    const carousels = document.querySelectorAll('.portfolio-carousel');
+    carousels.forEach(carousel => {
+        const slides = carousel.querySelectorAll('.carousel-slide');
+        if (slides.length > 1) {
+            // Создаем точки, если их нет
+            let dotsContainer = carousel.querySelector('.carousel-dots');
+            if (!dotsContainer) {
+                dotsContainer = document.createElement('div');
+                dotsContainer.className = 'carousel-dots';
+                carousel.appendChild(dotsContainer);
+            }
+            
+            // Очищаем существующие точки
+            dotsContainer.innerHTML = '';
+            
+            // Создаем точки для каждого слайда
+            slides.forEach((slide, index) => {
+                const dot = document.createElement('span');
+                dot.className = 'dot';
+                if (index === 0) dot.classList.add('active');
+                dot.onclick = () => currentSlide(dot, index);
+                dotsContainer.appendChild(dot);
+            });
+        }
+    });
+});
+
+function openChat(masterId) {
+    // Пока заглушка
+    alert('Чат с мастером будет доступен позже');
+}
+
+function openProfile(masterId) {
+    // Перенаправление на страницу профиля мастера
+    window.location.href = `/master/profile/${masterId}/`;
+}
+</script>
+{% endblock %}
