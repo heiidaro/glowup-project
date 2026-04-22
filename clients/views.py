@@ -678,44 +678,30 @@ def accept_response(request, response_id):
             messages.error(request, 'Этот отклик уже обработан')
             return redirect('client_responses')
 
-        # Обновляем статус
+        # Подтверждаем отклик
         response.status = 'accepted'
         response.save()
 
-        # Получаем название услуги из тегов
-        service_name = "Услуга"
-        if response.post.tags.exists():
-            service_name = response.post.tags.first().name
+        # Создаем запись через метод модели
+        booking = response.create_booking()
 
-        # Убедитесь, что дата и время определены
-        booking_date = response.proposed_date or response.post.preferred_date
-        booking_time = response.proposed_time or response.post.preferred_time
+        if not booking:
+            messages.error(request, 'Не удалось создать запись')
+            return redirect('client_responses')
 
-        # Создаем запись
-        booking = Booking.objects.create(
-            client=response.post.client,
-            master=response.master,
-            service=service_name,
-            date=booking_date,
-            time=booking_time,
-            price=response.proposed_price or response.post.budget or 0,
-            status='active'
-        )
-
-        print(
-            f"Создана запись: ID={booking.id}, Client={booking.client.id}, Master={booking.master.id}, Date={booking.date}")
-
-        # Создаем уведомление для мастера
+        # Уведомление мастеру
         Notification.objects.create(
             user=response.master.user,
             notification_type='response_accepted',
             title='Ваш отклик принят',
             message=f'Клиент {response.post.client.full_name} принял ваш отклик. Создана запись на {booking.date} в {booking.time}',
-            link=f'/master/bookings/'
+            link='/master/bookings/'
         )
 
         messages.success(
-            request, f'Отклик принят! Создана запись на {booking.date} в {booking.time}')
+            request,
+            f'Отклик принят! Запись создана и добавлена во вкладку "Записи" на {booking.date} в {booking.time}'
+        )
 
     return redirect('client_responses')
 

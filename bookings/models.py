@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.utils import timezone
 
 
@@ -35,7 +35,7 @@ class Booking(models.Model):
         null=True,
         blank=True,
         related_name='booking'
-    )  # Связь с откликом
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -77,8 +77,7 @@ class Booking(models.Model):
 
     @property
     def can_reschedule(self):
-        """Можно ли перенести запись (не позднее чем за 24 часа)"""
-        return self.can_cancel  # То же условие
+        return self.can_cancel
 
 
 class BookingResponse(models.Model):
@@ -92,7 +91,7 @@ class BookingResponse(models.Model):
     post = models.ForeignKey(
         'clients.ClientPost',
         on_delete=models.CASCADE,
-        related_name='booking_responses'  # Изменено с 'responses'
+        related_name='booking_responses'
     )
     master = models.ForeignKey(
         'masters.MasterProfile',
@@ -148,12 +147,10 @@ class PostResponse(models.Model):
 
     @property
     def can_edit(self):
-        """Можно ли редактировать/отменять отклик"""
         return self.status == 'pending'
 
     @property
     def time_ago(self):
-        from django.utils import timezone
         now = timezone.now()
         delta = now - self.created_at
 
@@ -174,15 +171,24 @@ class PostResponse(models.Model):
         if self.status != 'accepted':
             return None
 
-        from .models import Booking
+        if hasattr(self, 'booking'):
+            return self.booking
+
+        service_name = "Услуга"
+        if self.post.tags.exists():
+            service_name = self.post.tags.first().name
+        elif self.post.service_category:
+            service_name = self.post.service_category
+
         booking = Booking.objects.create(
             client=self.post.client,
             master=self.master,
-            service=self.post.service_category,
+            service=service_name,
             date=self.proposed_date or self.post.preferred_date,
             time=self.proposed_time or self.post.preferred_time,
             price=self.proposed_price or self.post.budget or 0,
-            status='active'
+            status='active',
+            response=self
         )
         return booking
 

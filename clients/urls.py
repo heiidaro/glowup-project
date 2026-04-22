@@ -19,4 +19,6 @@ urlpatterns = [
          views.cancel_booking, name='cancel_booking'),
     path('reschedule-booking/<int:booking_id>/',
          views.reschedule_booking, name='reschedule_booking'),
+    path('toggle-response/<int:post_id>/',
+         views.toggle_response, name='toggle_response'),
 ]
