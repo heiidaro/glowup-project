@@ -13,6 +13,125 @@ import json
 from django.db.models import Avg
 from notifications.models import Notification
 from .models import MasterProfile
+import requests
+from django.conf import settings
+
+
+def geocode_yandex_address(address: str):
+    if not address:
+        return None, None
+
+    full_address = f"Тюмень, {address}" if "тюмень" not in address.lower(
+    ) else address
+
+    url = "https://geocode-maps.yandex.ru/1.x/"
+    params = {
+        "apikey": settings.YANDEX_GEOCODER_API_KEY,
+        "geocode": full_address,
+        "format": "json",
+        "results": 1,
+        "lang": "ru_RU",
+    }
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    try:
+        response = requests.get(
+            url, params=params, headers=headers, timeout=10)
+
+        if response.status_code != 200:
+            print("❌ Ошибка геокодера:", response.status_code)
+            print(response.text)
+            return None, None
+
+        data = response.json()
+        members = data["response"]["GeoObjectCollection"]["featureMember"]
+
+        if not members:
+            return None, None
+
+        pos = members[0]["GeoObject"]["Point"]["pos"]
+        lng, lat = pos.split()
+
+        return float(lat), float(lng)
+
+    except Exception as e:
+        print("❌ Exception:", str(e))
+        return None, None
+
+
+@login_required
+def masters_list(request):
+    """Список всех мастеров"""
+
+    masters = MasterProfile.objects.all().select_related('user')
+
+    masters_data = []
+    masters_map_data = []
+
+    for master in masters:
+        try:
+            portfolio = master.portfolio_set.all()[:5]
+        except:
+            portfolio = []
+
+        try:
+            services = master.services.filter(is_active=True)[:3]
+        except:
+            services = []
+
+        try:
+            avg_price = master.services.filter(is_active=True).aggregate(
+                Avg('price')
+            )['price__avg'] or 0
+        except:
+            avg_price = 0
+
+        try:
+            reviews = Review.objects.filter(
+                master=master,
+                is_approved=True,
+                is_blocked=False
+            )
+            rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+            reviews_count = reviews.count()
+        except:
+            rating = 0
+            reviews_count = 0
+
+        masters_data.append({
+            'id': master.id,
+            'display_name': master.display_name or "Мастер",
+            'address': master.address_text or "Адрес не указан",
+            'avatar': master.avatar,
+            'bio': master.bio,
+            'portfolio': portfolio,
+            'services': services,
+            'avg_price': avg_price,
+            'rating': rating,
+            'reviews_count': reviews_count,
+            'user': master.user,
+        })
+
+        if master.latitude is not None and master.longitude is not None:
+            masters_map_data.append({
+                'id': master.id,
+                'name': master.display_name or "Мастер",
+                'address': master.address_text or "Адрес не указан",
+                'lat': float(master.latitude),
+                'lng': float(master.longitude),
+                'price': round(avg_price) if avg_price else None,
+            })
+
+    context = {
+        'masters': masters_data,
+        'masters_map_data': masters_map_data,
+        'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
+    }
+
+    return render(request, 'masters/masters_list.html', context)
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -185,6 +304,7 @@ def master_dashboard(request):
         'current_year': current_year,
         'month_name': get_month_name(current_month),
         'upcoming_bookings': upcoming_bookings,
+        'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
     }
 
     return render(request, 'masters/dashboard.html', context)
@@ -203,10 +323,27 @@ def complete_profile(request):
 
         if display_name:
             master_profile.display_name = display_name
+
         if address_text:
             master_profile.address_text = address_text
-        if bio:
-            master_profile.bio = bio
+
+            latitude = request.POST.get('latitude')
+            longitude = request.POST.get('longitude')
+
+            if latitude and longitude:
+                try:
+                    master_profile.latitude = float(latitude)
+                    master_profile.longitude = float(longitude)
+                except ValueError:
+                    messages.error(request, 'Некорректные координаты адреса')
+                    return redirect('master_dashboard')
+            else:
+                messages.error(
+                    request, 'Выберите адрес из подсказок Яндекс Карт')
+                return redirect('master_dashboard')
+
+            if bio:
+                master_profile.bio = bio
 
         user = request.user
         if phone and phone != user.phone:
@@ -246,8 +383,24 @@ def update_profile(request):
 
         if display_name:
             master_profile.display_name = display_name
+
         if address_text:
             master_profile.address_text = address_text
+
+            latitude = request.POST.get('latitude')
+            longitude = request.POST.get('longitude')
+
+        if latitude and longitude:
+            try:
+                master_profile.latitude = float(latitude)
+                master_profile.longitude = float(longitude)
+            except ValueError:
+                messages.error(request, 'Некорректные координаты адреса')
+                return redirect('master_dashboard')
+        else:
+            messages.error(request, 'Выберите адрес из подсказок Яндекс Карт')
+            return redirect('master_dashboard')
+
         if bio:
             master_profile.bio = bio
 
@@ -411,40 +564,40 @@ def reschedule_booking(request, booking_id):
 
 @login_required
 def masters_list(request):
-    """Список всех мастеров - показываем всех, без фильтров"""
+    """Список всех мастеров"""
 
-    # Получаем ВСЕХ мастеров, без фильтрации
     masters = MasterProfile.objects.all().select_related('user')
 
-    # Для каждого мастера собираем дополнительную информацию
     masters_data = []
+    masters_map_data = []
+
     for master in masters:
-        # Получаем портфолио (если есть)
         try:
             portfolio = master.portfolio_set.all()[:5]
-        except:
+        except Exception:
             portfolio = []
 
-        # Получаем услуги мастера
         try:
             services = master.services.filter(is_active=True)[:3]
-        except:
+        except Exception:
             services = []
 
-        # Средняя стоимость услуг
         try:
-            avg_price = master.services.filter(is_active=True).aggregate(Avg('price'))[
-                'price__avg'] or 0
-        except:
+            avg_price = master.services.filter(is_active=True).aggregate(
+                Avg('price')
+            )['price__avg'] or 0
+        except Exception:
             avg_price = 0
 
-        # Рейтинг и количество отзывов
         try:
             reviews = Review.objects.filter(
-                master=master, is_approved=True, is_blocked=False)
+                master=master,
+                is_approved=True,
+                is_blocked=False
+            )
             rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
             reviews_count = reviews.count()
-        except:
+        except Exception:
             rating = 0
             reviews_count = 0
 
@@ -462,8 +615,26 @@ def masters_list(request):
             'user': master.user,
         })
 
+        # Главное для карты
+        if master.latitude is not None and master.longitude is not None:
+            masters_map_data.append({
+                'id': master.id,
+                'name': master.display_name or "Мастер",
+                'address': master.address_text or "Адрес не указан",
+                'lat': float(master.latitude),
+                'lng': float(master.longitude),
+                'price': round(avg_price) if avg_price else None,
+            })
+
+    print("=== DEBUG masters_map_data ===")
+    print(masters_map_data)
+    print("=== DEBUG api key ===")
+    print(settings.YANDEX_MAPS_API_KEY)
+
     context = {
         'masters': masters_data,
+        'masters_map_data': masters_map_data,
+        'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
     }
 
     return render(request, 'masters/masters_list.html', context)

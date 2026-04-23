@@ -6,41 +6,35 @@
 {% block content %}
 <div class="masters-page">
     <div class="masters-page-header">
-        <div>
+        <div class="header-text">
             <h1>Мастера Тюмени</h1>
-            <p>Выберите зарегистрированного мастера на карте или в списке</p>
+            <p>Здесь отображаются только зарегистрированные на сайте мастера. Выберите мастера по карточке или на карте.</p>
         </div>
     </div>
 
     <div class="masters-layout">
-        <!-- Левая часть: карта -->
-        <section class="map-section">
-            <div class="section-card map-card">
-                <div class="section-card-header">
-                    <div>
-                        <h3>Карта мастеров</h3>
-                        <p>На карте отображаются только зарегистрированные мастера из Тюмени</p>
-                    </div>
+        <section class="map-wrapper">
+            <div class="map-card">
+                <div class="map-card-header">
+                    <h3>Карта мастеров</h3>
+                    <span>Тюмень</span>
                 </div>
 
                 <div id="mastersMap" class="masters-map"></div>
+
+                <div id="mapEmptyState" class="map-empty-state" style="display: none;">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <p>У мастеров пока не заполнены координаты для отображения на карте</p>
+                </div>
             </div>
         </section>
 
-        <!-- Правая часть: список мастеров -->
-        <section class="list-section">
-            <div class="section-card masters-list-card">
-                <div class="section-card-header">
-                    <div>
-                        <h3>Список мастеров</h3>
-                        <p>Всего найдено: {{ masters|length }}</p>
-                    </div>
-                </div>
-
-                <div class="masters-grid">
-                    {% for master in masters %}
-                    <article class="master-card" id="master-card-{{ master.id }}">
-                        <div class="master-card-top">
+        <section class="list-wrapper">
+            <div class="masters-grid">
+                {% for master in masters %}
+                <article class="master-card" id="master-card-{{ master.id }}">
+                    <div class="master-card-top">
+                        <div class="master-main">
                             <div class="master-avatar-wrap">
                                 {% if master.avatar %}
                                     <img class="master-avatar" src="{{ master.avatar.url }}" alt="{{ master.display_name }}">
@@ -51,7 +45,7 @@
                                 {% endif %}
                             </div>
 
-                            <div class="master-main-info">
+                            <div class="master-head-info">
                                 <h3 class="master-name">{{ master.display_name }}</h3>
 
                                 <div class="master-rating">
@@ -75,60 +69,72 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="master-meta">
-                            <div class="meta-row">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>{{ master.address|default:"Адрес не указан" }}</span>
+                    {% if master.portfolio %}
+                    <div class="portfolio-preview">
+                        {% for item in master.portfolio|slice:":3" %}
+                            <div class="portfolio-thumb">
+                                <img src="{{ item.image.url }}" alt="{{ master.display_name }}">
                             </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="portfolio-empty">
+                        <i class="fas fa-camera"></i>
+                        <span>Портфолио пока не добавлено</span>
+                    </div>
+                    {% endif %}
 
-                            {% if master.avg_price %}
-                            <div class="meta-row">
-                                <i class="fas fa-ruble-sign"></i>
-                                <span>от {{ master.avg_price|floatformat:0 }} ₽</span>
-                            </div>
-                            {% endif %}
+                    <div class="master-meta">
+                        <div class="meta-row">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>{{ master.address|default:"Адрес не указан" }}</span>
                         </div>
 
-                        <div class="master-services">
-                            {% for service in master.services %}
-                                <span class="service-tag">{{ service.name }}</span>
-                            {% empty %}
-                                <span class="service-tag empty">Услуги не добавлены</span>
-                            {% endfor %}
-                        </div>
-
-                        {% if master.portfolio %}
-                        <div class="portfolio-preview">
-                            {% for item in master.portfolio|slice:":3" %}
-                                <div class="portfolio-thumb">
-                                    <img src="{{ item.image.url }}" alt="{{ master.display_name }}">
-                                </div>
-                            {% endfor %}
+                        {% if master.avg_price %}
+                        <div class="meta-row">
+                            <i class="fas fa-ruble-sign"></i>
+                            <span>от {{ master.avg_price|floatformat:0 }} ₽</span>
                         </div>
                         {% endif %}
 
-                        <div class="master-actions">
-                            <button class="btn-light" onclick="focusMasterOnMap({{ master.id }})">
-                                <i class="fas fa-map-pin"></i>
-                                На карте
-                            </button>
-                            <button class="btn-dark" onclick="openProfile({{ master.id }})">
-                                <i class="fas fa-user"></i>
-                                Профиль
-                            </button>
+                        {% if master.bio %}
+                        <div class="meta-row meta-bio">
+                            <i class="fas fa-info-circle"></i>
+                            <span>{{ master.bio|truncatechars:140 }}</span>
                         </div>
-                    </article>
-                    {% empty %}
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h3>Мастера не найдены</h3>
-                        <p>Сейчас в системе нет зарегистрированных мастеров из Тюмени</p>
+                        {% endif %}
                     </div>
-                    {% endfor %}
+
+                    <div class="master-services">
+                        {% for service in master.services %}
+                            <span class="service-tag">{{ service.name }}</span>
+                        {% empty %}
+                            <span class="service-tag empty">Услуги не добавлены</span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="master-actions">
+                        <button class="btn-light" type="button" onclick="focusMasterOnMap({{ master.id }})">
+                            <i class="fas fa-map-pin"></i>
+                            На карте
+                        </button>
+                        <button class="btn-dark" type="button" onclick="openProfile({{ master.id }})">
+                            <i class="fas fa-user"></i>
+                            Профиль
+                        </button>
+                    </div>
+                </article>
+                {% empty %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Мастера не найдены</h3>
+                    <p>Сейчас в системе нет зарегистрированных мастеров</p>
                 </div>
+                {% endfor %}
             </div>
         </section>
     </div>
@@ -136,7 +142,8 @@
 
 {{ masters_map_data|json_script:"masters-map-data" }}
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU" type="text/javascript"></script>
+
 <style>
 :root {
     --ui-bg: #F7F7F5;
@@ -145,9 +152,8 @@
     --ui-text: #202020;
     --ui-muted: #6B7280;
     --ui-soft: #F3F4F6;
-    --ui-soft-2: #FAFAFA;
     --ui-dark: #202020;
-    --ui-green: #16A34A;
+    --ui-blue: #2563EB;
 }
 
 .masters-page {
@@ -156,112 +162,148 @@
     gap: 24px;
 }
 
-.masters-page-header h1 {
+.masters-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.header-text h1 {
     font-size: 30px;
     line-height: 1.15;
     color: var(--ui-text);
     margin-bottom: 8px;
 }
 
-.masters-page-header p {
+.header-text p {
     color: var(--ui-muted);
     font-size: 15px;
+    line-height: 1.5;
 }
 
 .masters-layout {
     display: grid;
-    grid-template-columns: 1.1fr 1fr;
-    gap: 20px;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 24px;
     align-items: start;
 }
 
-.section-card {
+.map-wrapper {
+    position: sticky;
+    top: 20px;
+}
+
+.map-card {
     background: var(--ui-card);
     border: 1px solid var(--ui-border);
     border-radius: 22px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
     overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
-.section-card-header {
+.map-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 18px 20px;
     border-bottom: 1px solid var(--ui-border);
     background: #FCFCFC;
 }
 
-.section-card-header h3 {
+.map-card-header h3 {
     font-size: 18px;
     color: var(--ui-text);
-    margin-bottom: 6px;
 }
 
-.section-card-header p {
-    color: var(--ui-muted);
+.map-card-header span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--ui-soft);
+    color: var(--ui-text);
     font-size: 13px;
+    font-weight: 600;
 }
 
 .masters-map {
     width: 100%;
-    height: 720px;
+    height: 760px;
     background: var(--ui-soft);
 }
 
-.masters-list-card {
-    max-height: 760px;
-    overflow: hidden;
+.map-empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--ui-muted);
+    border-top: 1px solid var(--ui-border);
+}
+
+.map-empty-state i {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+    color: var(--ui-text);
+}
+
+.list-wrapper {
+    min-width: 0;
 }
 
 .masters-grid {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 18px;
-    max-height: 680px;
-    overflow-y: auto;
+    gap: 16px;
 }
 
 .master-card {
-    border: 1px solid var(--ui-border);
-    border-radius: 18px;
     background: var(--ui-card);
-    padding: 16px;
+    border: 1px solid var(--ui-border);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
     transition: .2s ease;
 }
 
 .master-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+    box-shadow: 0 14px 34px rgba(0,0,0,0.06);
 }
 
 .master-card.active-on-map {
     border-color: var(--ui-dark);
-    box-shadow: 0 0 0 2px rgba(32,32,32,0.08);
+    box-shadow: 0 0 0 2px rgba(32,32,32,0.08), 0 14px 34px rgba(0,0,0,0.06);
 }
 
 .master-card-top {
-    display: flex;
-    align-items: center;
-    gap: 14px;
     margin-bottom: 14px;
 }
 
+.master-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
 .master-avatar-wrap {
-    width: 62px;
-    height: 62px;
-    min-width: 62px;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
 }
 
 .master-avatar {
-    width: 62px;
-    height: 62px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
 }
 
 .avatar-placeholder {
-    width: 62px;
-    height: 62px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     background: var(--ui-dark);
     color: white;
@@ -272,15 +314,15 @@
     font-weight: 700;
 }
 
-.master-main-info {
+.master-head-info {
     min-width: 0;
 }
 
 .master-name {
-    font-size: 18px;
+    font-size: 19px;
+    line-height: 1.2;
     color: var(--ui-text);
     margin-bottom: 8px;
-    line-height: 1.2;
     word-break: break-word;
 }
 
@@ -308,17 +350,53 @@
     font-size: 13px;
 }
 
+.portfolio-preview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.portfolio-thumb {
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-soft);
+}
+
+.portfolio-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.portfolio-empty {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 72px;
+    border-radius: 16px;
+    background: var(--ui-soft);
+    border: 1px solid var(--ui-border);
+    padding: 0 14px;
+    margin-bottom: 14px;
+    color: var(--ui-muted);
+    font-size: 14px;
+}
+
 .master-meta {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     margin-bottom: 14px;
 }
 
 .meta-row {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: 9px;
     color: var(--ui-muted);
     font-size: 14px;
     line-height: 1.45;
@@ -330,11 +408,15 @@
     margin-top: 2px;
 }
 
+.meta-bio span {
+    color: #4B5563;
+}
+
 .master-services {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
 .service-tag {
@@ -354,27 +436,6 @@
     color: var(--ui-muted);
 }
 
-.portfolio-preview {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
-}
-
-.portfolio-thumb {
-    aspect-ratio: 1 / 1;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid var(--ui-border);
-    background: var(--ui-soft);
-}
-
-.portfolio-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 .master-actions {
     display: flex;
     gap: 10px;
@@ -383,7 +444,7 @@
 .btn-light,
 .btn-dark {
     flex: 1;
-    min-height: 42px;
+    min-height: 44px;
     padding: 10px 14px;
     border-radius: 12px;
     border: none;
@@ -416,21 +477,25 @@
 }
 
 .empty-state {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+    padding: 56px 24px;
     text-align: center;
-    padding: 50px 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
 .empty-icon {
-    width: 72px;
-    height: 72px;
+    width: 74px;
+    height: 74px;
     border-radius: 50%;
     background: var(--ui-soft);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 30px;
     color: var(--ui-text);
-    margin-bottom: 16px;
+    margin-bottom: 18px;
 }
 
 .empty-state h3 {
@@ -444,99 +509,145 @@
     line-height: 1.5;
 }
 
-.leaflet-popup-content {
-    margin: 12px 14px;
-}
-
-.map-popup h4 {
-    font-size: 15px;
-    margin-bottom: 6px;
-    color: var(--ui-text);
-}
-
-.map-popup p {
-    font-size: 13px;
-    color: var(--ui-muted);
-    margin-bottom: 6px;
-    line-height: 1.4;
-}
-
-.map-popup .map-link {
-    display: inline-block;
-    margin-top: 4px;
-    color: #2563EB;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 13px;
-}
-
 @media (max-width: 1100px) {
     .masters-layout {
         grid-template-columns: 1fr;
     }
 
+    .map-wrapper {
+        position: static;
+    }
+
     .masters-map {
         height: 420px;
     }
+}
 
-    .masters-list-card {
-        max-height: none;
+@media (max-width: 700px) {
+    .master-actions {
+        flex-direction: column;
     }
 
-    .masters-grid {
-        max-height: none;
+    .portfolio-preview {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 </style>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let mastersMap;
-let masterMarkers = {};
+let mastersMapInstance = null;
+let placemarksById = {};
 
-document.addEventListener('DOMContentLoaded', function() {
-    initMastersMap();
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof ymaps === 'undefined') {
+        console.error('Yandex Maps API не загрузился');
+        showMapEmptyState();
+        return;
+    }
+
+    ymaps.ready(initMastersMap);
 });
 
 function initMastersMap() {
     const raw = document.getElementById('masters-map-data');
-    const masters = raw ? JSON.parse(raw.textContent) : [];
 
-    // Центр Тюмени
-    mastersMap = L.map('mastersMap').setView([57.1522, 65.5272], 11);
+    console.log('RAW masters-map-data element:', raw);
+    console.log('RAW textContent:', raw ? raw.textContent : 'NO ELEMENT');
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(mastersMap);
+    let masters = [];
 
-    masters.forEach(master => {
-        if (master.lat && master.lng) {
-            const marker = L.marker([master.lat, master.lng]).addTo(mastersMap);
+    try {
+        masters = raw ? JSON.parse(raw.textContent) : [];
+    } catch (e) {
+        console.error('Ошибка парсинга JSON:', e);
+        masters = [];
+    }
 
-            marker.bindPopup(`
-                <div class="map-popup">
-                    <h4>${master.name}</h4>
-                    <p>${master.address || 'Адрес не указан'}</p>
-                    ${master.price ? `<p>от ${master.price} ₽</p>` : ''}
-                    <a class="map-link" href="/master/profile/${master.id}/">Открыть профиль</a>
-                </div>
-            `);
+    console.log('PARSED masters:', masters);
+    console.log('IS ARRAY:', Array.isArray(masters));
 
-            marker.on('click', function() {
-                highlightMasterCard(master.id);
-            });
+    if (!Array.isArray(masters)) {
+        masters = [];
+    }
 
-            masterMarkers[master.id] = marker;
-        }
+    const validMasters = masters.filter(master =>
+        master &&
+        master.lat !== null &&
+        master.lng !== null &&
+        master.lat !== '' &&
+        master.lng !== '' &&
+        !isNaN(Number(master.lat)) &&
+        !isNaN(Number(master.lng))
+    );
+
+    console.log('VALID masters:', validMasters);
+
+    if (!validMasters.length) {
+        showMapEmptyState();
+        return;
+    }
+
+    mastersMapInstance = new ymaps.Map('mastersMap', {
+        center: [57.1522, 65.5272],
+        zoom: 11,
+        controls: ['zoomControl', 'fullscreenControl']
     });
+
+    const bounds = [];
+
+    validMasters.forEach(master => {
+        const coords = [Number(master.lat), Number(master.lng)];
+
+        const placemark = new ymaps.Placemark(
+            coords,
+            {
+                balloonContentHeader: master.name || 'Мастер',
+                balloonContentBody: `
+                    <div style="min-width:220px; line-height:1.5;">
+                        <div>${master.address || 'Адрес не указан'}</div>
+                        ${master.price ? `<div style="margin-top:6px;">от ${master.price} ₽</div>` : ''}
+                        <div style="margin-top:8px;">
+                            <a href="/master/profile/${master.id}/" style="color:#2563EB; text-decoration:none; font-weight:600;">
+                                Открыть профиль
+                            </a>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                preset: 'islands#blackCircleDotIcon'
+            }
+        );
+
+        placemark.events.add('click', function () {
+            highlightMasterCard(master.id);
+        });
+
+        mastersMapInstance.geoObjects.add(placemark);
+        placemarksById[master.id] = placemark;
+        bounds.push(coords);
+    });
+
+    if (bounds.length === 1) {
+        mastersMapInstance.setCenter(bounds[0], 15, { duration: 300 });
+    } else {
+        mastersMapInstance.setBounds(bounds, {
+            checkZoomRange: true,
+            zoomMargin: 40
+        });
+    }
 }
 
 function focusMasterOnMap(masterId) {
-    const marker = masterMarkers[masterId];
-    if (!marker) return;
+    if (!mastersMapInstance || !placemarksById[masterId]) {
+        return;
+    }
 
-    mastersMap.setView(marker.getLatLng(), 14, { animate: true });
-    marker.openPopup();
+    const placemark = placemarksById[masterId];
+    const coords = placemark.geometry.getCoordinates();
+
+    mastersMapInstance.setCenter(coords, 15, { duration: 300 });
+    placemark.balloon.open();
     highlightMasterCard(masterId);
 }
 
@@ -554,6 +665,19 @@ function highlightMasterCard(masterId) {
 
 function openProfile(masterId) {
     window.location.href = `/master/profile/${masterId}/`;
+}
+
+function showMapEmptyState() {
+    const map = document.getElementById('mastersMap');
+    const empty = document.getElementById('mapEmptyState');
+
+    if (map) {
+        map.style.display = 'none';
+    }
+
+    if (empty) {
+        empty.style.display = 'block';
+    }
 }
 </script>
 {% endblock %}

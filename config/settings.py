@@ -28,6 +28,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+YANDEX_MAPS_API_KEY = "226d7a52-89e2-4922-b930-66d8a51bf07d"
+YANDEX_GEOCODER_API_KEY = "226d7a52-89e2-4922-b930-66d8a51bf07d"
+YANDEX_SUGGEST_API_KEY = "77ea9976-5d94-4a19-943f-05f62dcbea96"
+
 
 # Application definition
 
@@ -48,6 +52,7 @@ INSTALLED_APPS = [
     'chat',
     'notifications',
     'reviews',
+    'cache_cleaner',
 
     'clients.apps.ClientsConfig',
     'masters.apps.MastersConfig',

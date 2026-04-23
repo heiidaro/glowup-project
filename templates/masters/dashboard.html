@@ -250,6 +250,9 @@
                 <input type="text" id="address_text" name="address_text" 
                        placeholder="Введите адрес" 
                        value="{{ master.address_text|default:'' }}" required>
+                <input type="hidden" id="profile_latitude" name="latitude" value="{{ master.latitude|default:'' }}">
+                <input type="hidden" id="profile_longitude" name="longitude" value="{{ master.longitude|default:'' }}">
+                <div id="profile_address_suggestions" class="address-suggestions"></div>
             </div>
             
             <div class="form-group">
@@ -306,11 +309,14 @@
                        value="{{ master.display_name|default:'' }}" required>
             </div>
             
-            <div class="form-group">
-                <label for="settings_address_text">Адрес <span class="required">*</span></label>
-                <input type="text" id="settings_address_text" name="address_text" 
-                       placeholder="Введите адрес" 
-                       value="{{ master.address_text|default:'' }}" required>
+            <div class="form-group address-group">
+              <label for="settings_address_text">Адрес <span class="required">*</span></label>
+              <input type="text" id="settings_address_text" name="address_text"
+                    placeholder="Тюмень, улица, дом"
+                    value="{{ master.address_text|default:'' }}" required autocomplete="off">
+              <input type="hidden" id="settings_latitude" name="latitude" value="{{ master.latitude|default:'' }}">
+              <input type="hidden" id="settings_longitude" name="longitude" value="{{ master.longitude|default:'' }}">
+              <div id="settings_address_suggestions" class="address-suggestions"></div>
             </div>
             
             <div class="form-group">
@@ -512,6 +518,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU" type="text/javascript"></script>
 <style>
   :root {
       --bg: #F7F7F5;
@@ -1189,6 +1196,68 @@ body.modal-open {
     font-weight: 500;
     margin-left: auto;
 }
+
+
+
+.address-group {
+    position: relative;
+}
+
+.address-suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    z-index: 2000;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+}
+
+.address-suggestion-item {
+    padding: 12px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #202020;
+    border-bottom: 1px solid #F3F4F6;
+    transition: background .2s ease;
+}
+
+.address-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.address-suggestion-item:hover {
+    background: #F7F7F5;
+}
+
+.address-suggestion-title {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.address-suggestion-subtitle {
+    font-size: 12px;
+    color: #6B7280;
+}
+
+.address-loading {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #6B7280;
+}
+
+.address-empty {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #6B7280;
+}
 </style>
 
 <script>
@@ -1302,5 +1371,206 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
     }
 });
 {% endif %}
+
+
+
+
+
+// ---- Адресные подсказки для Тюмени ----
+function debounce(fn, delay = 400) {
+    let timer = null;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+function setupAddressAutocomplete(inputId, suggestionsId, latId, lngId) {
+    const input = document.getElementById(inputId);
+    const suggestionsBox = document.getElementById(suggestionsId);
+    const latInput = document.getElementById(latId);
+    const lngInput = document.getElementById(lngId);
+
+    if (!input || !suggestionsBox || !latInput || !lngInput) return;
+
+    const tyumenBounds = [
+        [57.00, 65.35],
+        [57.25, 65.75]
+    ];
+
+    function hideSuggestions() {
+        suggestionsBox.style.display = 'none';
+        suggestionsBox.innerHTML = '';
+    }
+
+    function showLoading() {
+        suggestionsBox.innerHTML = '<div class="address-loading">Поиск адресов...</div>';
+        suggestionsBox.style.display = 'block';
+    }
+
+    function showEmpty() {
+        suggestionsBox.innerHTML = '<div class="address-empty">Адреса не найдены</div>';
+        suggestionsBox.style.display = 'block';
+    }
+
+    function renderSuggestions(items) {
+        if (!items.length) {
+            showEmpty();
+            return;
+        }
+
+        suggestionsBox.innerHTML = '';
+
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'address-suggestion-item';
+
+            const title = document.createElement('span');
+            title.className = 'address-suggestion-title';
+            title.textContent = item.title;
+
+            const subtitle = document.createElement('span');
+            subtitle.className = 'address-suggestion-subtitle';
+            subtitle.textContent = item.subtitle || 'Тюмень';
+
+            div.appendChild(title);
+            div.appendChild(subtitle);
+
+            div.addEventListener('click', function () {
+                input.value = item.fullAddress;
+                latInput.value = item.lat;
+                lngInput.value = item.lng;
+                hideSuggestions();
+            });
+
+            suggestionsBox.appendChild(div);
+        });
+
+        suggestionsBox.style.display = 'block';
+    }
+
+    const searchAddresses = debounce(function () {
+        const value = input.value.trim();
+
+        latInput.value = '';
+        lngInput.value = '';
+
+        if (value.length < 3) {
+            hideSuggestions();
+            return;
+        }
+
+        if (typeof ymaps === 'undefined') {
+            console.error('ymaps не загружен');
+            return;
+        }
+
+        showLoading();
+
+        const query = value.toLowerCase().includes('тюм')
+            ? value
+            : `Тюмень, ${value}`;
+
+        ymaps.geocode(query, {
+            boundedBy: tyumenBounds,
+            strictBounds: true,
+            results: 5
+        }).then(function (res) {
+            const collection = res.geoObjects;
+            const items = [];
+
+            for (let i = 0; i < collection.getLength(); i++) {
+                const obj = collection.get(i);
+                const coords = obj.geometry.getCoordinates();
+                const fullAddress = obj.getAddressLine();
+
+                if (!fullAddress || !fullAddress.toLowerCase().includes('тюм')) {
+                    continue;
+                }
+
+                items.push({
+                    title: fullAddress,
+                    subtitle: 'Выбрать адрес',
+                    fullAddress: fullAddress,
+                    lat: coords[0],
+                    lng: coords[1]
+                });
+            }
+
+            renderSuggestions(items);
+        }).catch(function (error) {
+            console.error('Ошибка геокодирования:', error);
+            showEmpty();
+        });
+    }, 350);
+
+    input.addEventListener('input', searchAddresses);
+
+    input.addEventListener('focus', function () {
+        if (input.value.trim().length >= 3) {
+            searchAddresses();
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.address-group')) {
+            hideSuggestions();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof ymaps === 'undefined') {
+        console.error('Yandex Maps API не загрузился для адресных подсказок');
+        return;
+    }
+
+    ymaps.ready(function () {
+        setupAddressAutocomplete(
+            'address_text',
+            'profile_address_suggestions',
+            'profile_latitude',
+            'profile_longitude'
+        );
+
+        setupAddressAutocomplete(
+            'settings_address_text',
+            'settings_address_suggestions',
+            'settings_latitude',
+            'settings_longitude'
+        );
+    });
+});
+
+// Проверка формы профиля
+document.addEventListener('DOMContentLoaded', function () {
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function (e) {
+            const addressInput = document.getElementById('address_text');
+            const latInput = document.getElementById('profile_latitude');
+            const lngInput = document.getElementById('profile_longitude');
+
+            if (addressInput && addressInput.value.trim() && (!latInput.value || !lngInput.value)) {
+                e.preventDefault();
+                alert('Выберите адрес из выпадающего списка');
+            }
+        });
+    }
+
+    const settingsForm = document.getElementById('settingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function (e) {
+            const addressInput = document.getElementById('settings_address_text');
+            const latInput = document.getElementById('settings_latitude');
+            const lngInput = document.getElementById('settings_longitude');
+
+            if (addressInput && addressInput.value.trim() && (!latInput.value || !lngInput.value)) {
+                e.preventDefault();
+                alert('Выберите адрес из выпадающего списка');
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

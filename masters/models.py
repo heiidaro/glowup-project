@@ -20,6 +20,10 @@ class MasterProfile(models.Model):
         upload_to='masters/avatars/', blank=True, null=True, verbose_name="Аватар")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True)
 
     class Meta:
         db_table = 'masters_masterprofile'
