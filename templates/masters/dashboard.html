@@ -370,49 +370,66 @@
 {% endblock %}
 
 {% block right_sidebar %}
-<div class="profile-sidebar">
-    <div class="profile-header">
-        <div class="profile-avatar">
-            {% if master.avatar %}
-                <img src="{{ master.avatar.url }}" alt="{{ master.display_name }}">
-            {% else %}
-                <div class="avatar-large">
-                    {% if master and master.display_name %}
-                        {{ master.display_name|first }}
-                    {% else %}
-                        {{ user.email|first|default:"М" }}
-                    {% endif %}
-                </div>
-            {% endif %}
-        </div>
-        <div class="profile-info">
-            <h3>{{ master.display_name }}</h3>
-            <p>Мастер</p>
-            <p>Телефон: {{ user.phone|default:"не указан" }}</p>
-            <p>Email: {{ user.email }}</p>
-            <p>Адрес: {{ master.address_text }}</p>
-        </div>
+<div class="profile-sidebar unified-sidebar">
+    <div class="profile-card">
         <a href="#" class="settings-btn" onclick="openSettingsModal(); return false;">
             <i class="fas fa-cog"></i>
         </a>
+
+        <div class="profile-top">
+            <div class="profile-avatar">
+                {% if master.avatar %}
+                    <img src="{{ master.avatar.url }}" alt="{{ master.display_name }}">
+                {% else %}
+                    <div class="avatar-large">
+                        {% if master and master.display_name %}
+                            {{ master.display_name|first }}
+                        {% else %}
+                            {{ user.email|first|default:"М" }}
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="profile-meta">
+                <h3>{{ master.display_name|default:"Мастер" }}</h3>
+                <span class="profile-role">Мастер</span>
+
+                <div class="profile-details">
+                    <div class="profile-line">
+                        <span class="label">Телефон</span>
+                        <span class="value">{{ user.phone|default:"не указан" }}</span>
+                    </div>
+                    <div class="profile-line">
+                        <span class="label">Email</span>
+                        <span class="value">{{ user.email|default:"не указан" }}</span>
+                    </div>
+                    <div class="profile-line">
+                        <span class="label">Адрес</span>
+                        <span class="value">{{ master.address_text|default:"не указан" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="divider"></div>
-
-    <div class="bookings-section">
+    <div class="sidebar-section">
         <div class="section-header">
             <h4>Мои записи</h4>
-            <a href="#" class="view-all">Все</a>
+            <a href="{% url 'master_bookings' %}" class="view-all">Все</a>
         </div>
 
-        <!-- Календарь -->
         <div class="calendar-widget">
             <div class="calendar-header">
-                <button class="month-nav prev" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <button class="month-nav prev" onclick="changeMonth(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
                 <span class="current-month">{{ month_name }} {{ current_year }}</span>
-                <button class="month-nav next" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                <button class="month-nav next" onclick="changeMonth(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
-            
+
             <div class="calendar-weekdays">
                 <span>Пн</span>
                 <span>Вт</span>
@@ -422,13 +439,13 @@
                 <span>Сб</span>
                 <span>Вс</span>
             </div>
-            
+
             <div class="calendar-days">
                 {% for day in calendar_days %}
                     {% if day.date %}
                         {% with date_str=day.date|date:'Y-m-d' %}
-                            <div class="calendar-day 
-                                {% if day.has_booking %}has-booking{% endif %} 
+                            <div class="calendar-day
+                                {% if day.has_booking %}has-booking{% endif %}
                                 {% if day.is_today %}today{% endif %}
                                 {% if date_str == selected_date %}selected{% endif %}"
                                 data-date="{{ date_str }}">
@@ -442,24 +459,46 @@
             </div>
         </div>
 
-        <!-- Список записей на выбранный день -->
         <div class="day-bookings" id="day-bookings">
             <h4>Записи на {{ selected_date|date:"d.m.Y" }}</h4>
-            
+
             {% if selected_date_bookings %}
                 {% for booking in selected_date_bookings %}
-                <div class="booking-item">
-                    <div class="booking-time">{{ booking.time|time:"H:i" }}</div>
-                    <div class="booking-client">{{ booking.client.full_name }}</div>
-                    <div class="booking-service">{{ booking.service }}</div>
-                    <div class="booking-price">{{ booking.price }} ₽</div>
-                    <div class="booking-status status-{{ booking.status }}">
-                        {{ booking.get_status_display }}
+                <div class="day-booking-card">
+                    <div class="day-booking-main">
+                        <div class="service-col">
+                            <h5>{{ booking.service }}</h5>
+                            <span class="booking-price">{{ booking.price }} ₽</span>
+                        </div>
+
+                        <div class="datetime-col">
+                            <span>{{ booking.date|date:"d.m" }}</span>
+                            <span>{{ booking.time|time:"H:i" }}</span>
+                        </div>
+
+                        <div class="person-col">
+                            <div class="mini-avatar">
+                                {% if booking.client.avatar %}
+                                    <img src="{{ booking.client.avatar.url }}" alt="">
+                                {% else %}
+                                    <div class="avatar-placeholder">
+                                        {{ booking.client.full_name|first|default:"К" }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <span>{{ booking.client.full_name|default:"Клиент" }}</span>
+                        </div>
+                    </div>
+
+                    <div class="day-booking-footer">
+                        <span class="booking-status-pill status-{{ booking.status }}">
+                            {{ booking.get_status_display }}
+                        </span>
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
-                <p class="empty-state">На этот день записей нет</p>
+                <p class="empty-state small-empty">На этот день записей нет</p>
             {% endif %}
         </div>
     </div>
@@ -470,8 +509,84 @@
     <input type="hidden" name="year" id="year-input" value="{{ current_year }}">
     <input type="hidden" name="date" id="date-input" value="{{ selected_date }}">
 </form>
+{% endblock %}
 
+{% block extra_js %}
 <style>
+  :root {
+      --bg: #F7F7F5;
+      --card: #FFFFFF;
+      --dark: #202020;
+      --gray: #6B7280;
+      --border: #E5E7EB;
+
+      --green: #DCFCE7;
+      --green-text: #166534;
+
+      --yellow: #FEF3C7;
+      --yellow-text: #92400E;
+
+      --red: #FEE2E2;
+      --red-text: #991B1B;
+  }
+
+  body {
+      background: var(--bg);
+  }
+
+.profile-header {
+    position: relative;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+
+.profile-avatar img,
+.avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--dark);
+    color: white;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-info h3 {
+    font-size: 18px;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.profile-info p {
+    font-size: 13px;
+    color: var(--gray);
+}
+
+.settings-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    color: var(--gray);
+}
+
+.master-item, .client-item {
+    padding: 12px;
+    border-radius: 10px;
+    transition: 0.2s;
+}
+
+.master-item:hover, .client-item:hover {
+    background: #f9fafb;
+}
+
+
+
 /* Стили для модальных окон */
 .modal {
     position: fixed;
@@ -544,6 +659,27 @@
 .close-btn:hover {
     color: #333;
     background-color: #f0f0f0;
+}
+
+
+.content-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.header-actions .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: white;
+    border: 1px solid var(--border);
+    transition: 0.2s;
+}
+
+.header-actions .icon-btn:hover {
+    background: var(--dark);
+    color: white;
 }
 
 .form-group {
@@ -785,8 +921,8 @@ body.modal-open {
 }
 
 .status-pending {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--yellow);
+    color: var(--yellow-text);
 }
 
 .status-confirmed {
@@ -854,7 +990,7 @@ body.modal-open {
 /* Стили для отзывов */
 .review-item {
     padding: 12px 0;
-    border-bottom: 1px solid #e3e3db;
+    border-bottom: 1px solid #E5E7EB;
 }
 
 .review-item:last-child {
@@ -933,17 +1069,18 @@ body.modal-open {
 
 /* Выделение выбранного дня в календаре */
 .calendar-day.selected {
-    background-color: #3a3a3a;
     color: white;
     font-weight: bold;
     box-shadow: 0 0 0 2px white, 0 0 0 4px #202020;
     transform: scale(1.05);
     transition: all 0.2s ease;
+    background: var(--dark);
+    color: white;
 }
 
 .calendar-day.has-booking {
-    background-color: #e3e3db;
-    color: #202020;
+    background: #E5E7EB;
+    color: var(--dark);
 }
 
 .calendar-day.today {
@@ -960,12 +1097,17 @@ body.modal-open {
 }
 
 .dashboard-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    overflow: hidden;
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
 }
 
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+}
 .dashboard-card.full-width {
     grid-column: 1 / -1;
     margin-bottom: 24px;
@@ -1004,7 +1146,7 @@ body.modal-open {
 .empty-state i {
     font-size: 48px;
     margin-bottom: 16px;
-    color: #e3e3db;
+    color: #E5E7EB;
 }
 
 /* Стили для откликов в дашборде мастера */

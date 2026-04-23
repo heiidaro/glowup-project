@@ -16,6 +16,7 @@ from django.http import JsonResponse
 import json
 from masters.models import MasterProfile
 from django.contrib.auth import update_session_auth_hash
+from calendar import monthrange
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -293,80 +294,171 @@ def update_profile(request):
     return redirect('client_dashboard')
 
 
+# @login_required
+# def client_bookings(request):
+#     # Проверяем роль
+#     if request.user.role != 'client':
+#         messages.error(request, 'У вас нет доступа к этой странице')
+#         return redirect('home')
+
+#     # Получаем профиль клиента
+#     client_profile = ClientProfile.objects.get(user=request.user)
+
+#     # Текущая дата и время
+#     now = timezone.now()
+#     today = now.date()
+
+#     # Получаем месяц и год из GET параметров
+#     try:
+#         current_month = int(request.GET.get('month', now.month))
+#         current_year = int(request.GET.get('year', now.year))
+#     except ValueError:
+#         current_month = now.month
+#         current_year = now.year
+
+#     # Все записи клиента
+#     all_bookings = Booking.objects.filter(
+#         client=client_profile).select_related('master')
+#     print(
+#         f"=== Всего записей для клиента {client_profile.id}: {all_bookings.count()} ===")
+#     for b in all_bookings:
+#         print(
+#             f"  Запись {b.id}: дата={b.date}, статус={b.status}, мастер={b.master.display_name}")
+
+#     # Разделяем на активные и архивные
+#     active_bookings = []
+#     archived_bookings = []
+
+#     for booking in all_bookings:
+#         booking_datetime = datetime.combine(booking.date, booking.time)
+#         booking_datetime = timezone.make_aware(booking_datetime)
+
+#         if booking.date > today or (booking.date == today and booking.time > now.time()):
+#             if booking.status == 'active':
+#                 active_bookings.append(booking)
+#             else:
+#                 archived_bookings.append(booking)
+#         else:
+#             archived_bookings.append(booking)
+
+#     # Фильтруем для отображения в списках
+#     active_display = [b for b in active_bookings if b.date >= today]
+#     archived_display = [
+#         b for b in archived_bookings if b.date < today or b.status != 'active']
+
+#     # Получаем записи для календаря за выбранный месяц
+#     month_active = [b for b in active_bookings if b.date.year ==
+#                     current_year and b.date.month == current_month]
+#     month_archived = [b for b in archived_bookings if b.date.year ==
+#                       current_year and b.date.month == current_month]
+
+#     # Генерируем дни для календаря
+#     calendar_days = get_calendar_days(
+#         current_year, current_month, month_active, month_archived)
+
+#     context = {
+#         'active_bookings': active_display,
+#         'archived_bookings': archived_display,
+#         'calendar_days': calendar_days,
+#         'current_month': current_month,
+#         'current_year': current_year,
+#         'month_name': get_month_name(current_month),
+#         'now': now,
+#         'today': today,
+#     }
+
+#     return render(request, 'clients/bookings.html', context)
+
+
 @login_required
 def client_bookings(request):
-    # Проверяем роль
-    if request.user.role != 'client':
-        messages.error(request, 'У вас нет доступа к этой странице')
-        return redirect('home')
+    client_profile = get_object_or_404(ClientProfile, user=request.user)
 
-    # Получаем профиль клиента
-    client_profile = ClientProfile.objects.get(user=request.user)
+    active_bookings = Booking.objects.filter(
+        client=client_profile,
+        status='active'
+    ).select_related(
+        'master', 'master__user'
+    ).order_by('date', 'time')
 
-    # Текущая дата и время
-    now = timezone.now()
-    today = now.date()
+    archived_bookings = Booking.objects.filter(
+        client=client_profile,
+        status__in=['completed', 'cancelled', 'expired']
+    ).select_related(
+        'master', 'master__user'
+    ).order_by('-date', '-time')
 
-    # Получаем месяц и год из GET параметров
-    try:
-        current_month = int(request.GET.get('month', now.month))
-        current_year = int(request.GET.get('year', now.year))
-    except ValueError:
-        current_month = now.month
-        current_year = now.year
+    # Текущий месяц/год для календаря
+    today = timezone.localdate()
+    current_month = int(request.GET.get('month', today.month))
+    current_year = int(request.GET.get('year', today.year))
 
-    # Все записи клиента
-    all_bookings = Booking.objects.filter(
-        client=client_profile).select_related('master')
-    print(
-        f"=== Всего записей для клиента {client_profile.id}: {all_bookings.count()} ===")
-    for b in all_bookings:
-        print(
-            f"  Запись {b.id}: дата={b.date}, статус={b.status}, мастер={b.master.display_name}")
-
-    # Разделяем на активные и архивные
-    active_bookings = []
-    archived_bookings = []
-
-    for booking in all_bookings:
-        booking_datetime = datetime.combine(booking.date, booking.time)
-        booking_datetime = timezone.make_aware(booking_datetime)
-
-        if booking.date > today or (booking.date == today and booking.time > now.time()):
-            if booking.status == 'active':
-                active_bookings.append(booking)
-            else:
-                archived_bookings.append(booking)
-        else:
-            archived_bookings.append(booking)
-
-    # Фильтруем для отображения в списках
-    active_display = [b for b in active_bookings if b.date >= today]
-    archived_display = [
-        b for b in archived_bookings if b.date < today or b.status != 'active']
-
-    # Получаем записи для календаря за выбранный месяц
-    month_active = [b for b in active_bookings if b.date.year ==
-                    current_year and b.date.month == current_month]
-    month_archived = [b for b in archived_bookings if b.date.year ==
-                      current_year and b.date.month == current_month]
-
-    # Генерируем дни для календаря
-    calendar_days = get_calendar_days(
-        current_year, current_month, month_active, month_archived)
-
-    context = {
-        'active_bookings': active_display,
-        'archived_bookings': archived_display,
-        'calendar_days': calendar_days,
-        'current_month': current_month,
-        'current_year': current_year,
-        'month_name': get_month_name(current_month),
-        'now': now,
-        'today': today,
+    month_names = {
+        1: 'Январь',
+        2: 'Февраль',
+        3: 'Март',
+        4: 'Апрель',
+        5: 'Май',
+        6: 'Июнь',
+        7: 'Июль',
+        8: 'Август',
+        9: 'Сентябрь',
+        10: 'Октябрь',
+        11: 'Ноябрь',
+        12: 'Декабрь',
     }
 
-    return render(request, 'clients/bookings.html', context)
+    # Все записи клиента за выбранный месяц
+    month_bookings = Booking.objects.filter(
+        client=client_profile,
+        date__year=current_year,
+        date__month=current_month
+    )
+
+    # Если в один день несколько записей — приоритет у active
+    bookings_by_day = {}
+    for booking in month_bookings:
+        day_num = booking.date.day
+
+        booking_type = 'active' if booking.status == 'active' else 'archived'
+
+        if day_num not in bookings_by_day:
+            bookings_by_day[day_num] = booking_type
+        elif bookings_by_day[day_num] != 'active' and booking_type == 'active':
+            bookings_by_day[day_num] = 'active'
+
+    first_weekday, days_in_month = monthrange(current_year, current_month)
+    # monthrange: Monday=0 ... Sunday=6
+    leading_empty_days = first_weekday
+
+    calendar_days = []
+
+    for _ in range(leading_empty_days):
+        calendar_days.append({
+            'date': None
+        })
+
+    for day in range(1, days_in_month + 1):
+        current_date = date(current_year, current_month, day)
+        booking_type = bookings_by_day.get(day)
+
+        calendar_days.append({
+            'day': day,
+            'date': current_date,
+            'has_booking': booking_type is not None,
+            'type': booking_type,
+            'is_today': current_date == today,
+        })
+
+    return render(request, 'clients/bookings.html', {
+        'active_bookings': active_bookings,
+        'archived_bookings': archived_bookings,
+        'calendar_days': calendar_days,
+        'month_name': month_names[current_month],
+        'current_month': current_month,
+        'current_year': current_year,
+        'now': timezone.now(),
+    })
 
 
 def get_month_name(month):

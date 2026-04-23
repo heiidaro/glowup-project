@@ -4,95 +4,133 @@
 {% block title %}Мои отклики{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Мои отклики</h1>
-    <p>Все ваши отклики на посты клиентов</p>
+<div class="responses-page">
+    <div class="responses-page-header">
+        <div>
+            <h1>Мои отклики</h1>
+            <p>Все ваши отклики на посты клиентов</p>
+        </div>
+        <a href="{% url 'posts_list' %}" class="top-action-btn">Найти новые посты</a>
+    </div>
+
+    {% if responses %}
+        <div class="responses-grid">
+            {% for response in responses %}
+            <article class="response-card-new">
+                <div class="response-card-top">
+                    <div class="person-block">
+                        <div class="person-avatar">
+                            {% if response.post.client.avatar %}
+                                <img src="{{ response.post.client.avatar.url }}" alt="">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ response.post.client.full_name|first|default:"К" }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="person-meta">
+                            <h3>{{ response.post.client.full_name|default:"Клиент" }}</h3>
+                            <span class="person-subtitle">Клиент</span>
+                            <span class="response-time">{{ response.time_ago }}</span>
+                        </div>
+                    </div>
+
+                    <span class="status-pill status-{{ response.status }}">
+                        {{ response.get_status_display }}
+                    </span>
+                </div>
+
+                <div class="response-card-body">
+                    <div class="info-section">
+                        <div class="section-label">Пост клиента</div>
+                        <p class="main-text">{{ response.post.description|truncatechars:180 }}</p>
+
+                        <div class="chips-row">
+                            {% for tag in response.post.tags.all %}
+                                <span class="chip">#{{ tag.name }}</span>
+                            {% endfor %}
+
+                            {% if response.post.preferred_date %}
+                                <span class="meta-chip">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ response.post.preferred_date|date:"d.m.Y" }}
+                                </span>
+                            {% endif %}
+
+                            {% if response.post.budget %}
+                                <span class="meta-chip">
+                                    <i class="fas fa-ruble-sign"></i>
+                                    {{ response.post.budget }} ₽
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <a href="{% url 'posts_list' %}?post={{ response.post.id }}" class="inline-link">
+                            Открыть пост
+                        </a>
+                    </div>
+
+                    <div class="info-section offer-section">
+                        <div class="section-label">Ваше предложение</div>
+
+                        {% if response.message %}
+                            <p class="offer-message">
+                                <i class="fas fa-comment"></i>
+                                <span>{{ response.message }}</span>
+                            </p>
+                        {% endif %}
+
+                        <div class="offer-meta">
+                            {% if response.proposed_price %}
+                                <span class="offer-meta-item">
+                                    <i class="fas fa-ruble-sign"></i>
+                                    {{ response.proposed_price }} ₽
+                                </span>
+                            {% endif %}
+                            {% if response.proposed_date %}
+                                <span class="offer-meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ response.proposed_date|date:"d.m.Y" }}
+                                </span>
+                            {% endif %}
+                            {% if response.proposed_time %}
+                                <span class="offer-meta-item">
+                                    <i class="fas fa-clock"></i>
+                                    {{ response.proposed_time|time:"H:i" }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if response.can_edit %}
+                <div class="response-card-actions">
+                    <button class="btn-dark" onclick="openEditModal({{ response.id }}, '{{ response.message|escapejs }}', '{{ response.proposed_price }}', '{{ response.proposed_date|date:"Y-m-d" }}', '{{ response.proposed_time|time:"H:i" }}')">
+                        <i class="fas fa-edit"></i>
+                        Изменить
+                    </button>
+                    <button class="btn-danger" onclick="cancelResponse({{ response.id }})">
+                        <i class="fas fa-times"></i>
+                        Отказаться
+                    </button>
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state-new">
+            <div class="empty-icon">
+                <i class="fas fa-comment-dots"></i>
+            </div>
+            <h3>У вас пока нет откликов</h3>
+            <p>Выберите подходящий пост клиента и отправьте своё предложение.</p>
+            <a href="{% url 'posts_list' %}" class="btn-dark link-btn">Посмотреть посты</a>
+        </div>
+    {% endif %}
 </div>
 
-{% if responses %}
-    <div class="responses-list">
-        {% for response in responses %}
-        <div class="response-card">
-            <div class="response-header">
-                <div class="client-info">
-                    <div class="client-avatar">
-                        {% if response.post.client.avatar %}
-                            <img src="{{ response.post.client.avatar.url }}" alt="">
-                        {% else %}
-                            <div class="avatar-placeholder">
-                                {{ response.post.client.full_name|first|default:"К" }}
-                            </div>
-                        {% endif %}
-                    </div>
-                    <div class="client-details">
-                        <h3>{{ response.post.client.full_name|default:"Клиент" }}</h3>
-                        <span class="response-time">{{ response.time_ago }}</span>
-                    </div>
-                </div>
-                <div class="response-status status-{{ response.status }}">
-                    {{ response.get_status_display }}
-                </div>
-            </div>
-            
-            <div class="post-preview">
-                <h4>Пост клиента:</h4>
-                <p>{{ response.post.description|truncatechars:150 }}</p>
-                <div class="post-meta">
-                    <span><i class="fas fa-tag"></i> 
-                        {% for tag in response.post.tags.all %}
-                            #{{ tag.name }}
-                        {% endfor %}
-                    </span>
-                    <span><i class="fas fa-calendar"></i> {{ response.post.preferred_date|date:"d.m.Y" }}</span>
-                    {% if response.post.budget %}
-                    <span><i class="fas fa-ruble-sign"></i> {{ response.post.budget }} ₽</span>
-                    {% endif %}
-                </div>
-                <a href="{% url 'posts_list' %}?post={{ response.post.id }}" class="btn-link">Перейти к посту</a>
-            </div>
-            
-            <div class="response-details">
-                <h4>Ваше предложение:</h4>
-                <div class="proposal-info">
-                    {% if response.message %}
-                    <p><i class="fas fa-comment"></i> {{ response.message }}</p>
-                    {% endif %}
-                    <div class="proposal-price-time">
-                        {% if response.proposed_price %}
-                        <span><i class="fas fa-ruble-sign"></i> {{ response.proposed_price }} ₽</span>
-                        {% endif %}
-                        {% if response.proposed_date %}
-                        <span><i class="fas fa-calendar"></i> {{ response.proposed_date|date:"d.m.Y" }}</span>
-                        {% endif %}
-                        {% if response.proposed_time %}
-                        <span><i class="fas fa-clock"></i> {{ response.proposed_time|time:"H:i" }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            
-            {% if response.can_edit %}
-            <div class="response-actions">
-                <button class="btn-edit" onclick="openEditModal({{ response.id }}, '{{ response.message|escapejs }}', '{{ response.proposed_price }}', '{{ response.proposed_date|date:"Y-m-d" }}', '{{ response.proposed_time|time:"H:i" }}')">
-                    <i class="fas fa-edit"></i> Изменить
-                </button>
-                <button class="btn-cancel" onclick="cancelResponse({{ response.id }})">
-                    <i class="fas fa-times"></i> Отказаться
-                </button>
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="empty-state">
-        <i class="fas fa-comment-dots"></i>
-        <p>У вас пока нет откликов</p>
-        <a href="{% url 'posts_list' %}" class="btn-primary">Посмотреть посты</a>
-    </div>
-{% endif %}
-
-<!-- Модальное окно для редактирования -->
 <div id="editModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -120,8 +158,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
-                <button type="submit" class="btn-primary">Сохранить</button>
+                <button type="button" class="btn-light" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn-dark">Сохранить</button>
             </div>
         </form>
     </div>
@@ -129,270 +167,330 @@
 
 <style>
 :root {
-    --dark: #202020;
-    --gray: #3a3a3a;
-    --light: #e3e3db;
-    --white: #ffffff;
+    --ui-bg: #F7F7F5;
+    --ui-card: #FFFFFF;
+    --ui-border: #E5E7EB;
+    --ui-text: #202020;
+    --ui-muted: #6B7280;
+    --ui-soft: #F3F4F6;
+    --ui-success-bg: #DCFCE7;
+    --ui-success-text: #166534;
+    --ui-warn-bg: #FEF3C7;
+    --ui-warn-text: #92400E;
+    --ui-danger-bg: #FEE2E2;
+    --ui-danger-text: #991B1B;
 }
 
-.page-header {
-    margin-bottom: 30px;
-}
-
-.page-header h1 {
-    color: var(--dark);
-    font-size: 28px;
-    margin-bottom: 10px;
-}
-
-.page-header p {
-    color: var(--gray);
-}
-
-.responses-list {
+.responses-page {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 22px;
 }
 
-.response-card {
-    background: var(--white);
-    border: 1px solid var(--light);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: box-shadow 0.3s;
-}
-
-.response-card:hover {
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-}
-
-.response-header {
+.responses-page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background: var(--light);
-    border-bottom: 1px solid #ddd;
+    align-items: flex-start;
+    gap: 16px;
 }
 
-.client-info {
+.responses-page-header h1 {
+    font-size: 30px;
+    line-height: 1.15;
+    color: var(--ui-text);
+    margin-bottom: 8px;
+}
+
+.responses-page-header p {
+    color: var(--ui-muted);
+    font-size: 15px;
+}
+
+.top-action-btn,
+.link-btn {
+    text-decoration: none;
+}
+
+.responses-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.response-card-new {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+
+.response-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--ui-border);
+    background: #FCFCFC;
+}
+
+.person-block {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    min-width: 0;
 }
 
-.client-avatar {
-    width: 50px;
-    height: 50px;
+.person-avatar {
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
     border-radius: 50%;
     overflow: hidden;
-    background: var(--dark);
-    color: white;
+    background: #202020;
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: 700;
 }
 
-.client-avatar img {
+.person-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.client-details h3 {
-    font-size: 16px;
+.person-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.person-meta h3 {
+    font-size: 17px;
+    line-height: 1.2;
+    color: var(--ui-text);
+    word-break: break-word;
+}
+
+.person-subtitle {
+    font-size: 12px;
+    color: var(--ui-muted);
     font-weight: 600;
-    margin-bottom: 4px;
 }
 
 .response-time {
     font-size: 12px;
-    color: var(--gray);
+    color: var(--ui-muted);
 }
 
-.response-status {
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 500;
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .status-pending {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--ui-warn-bg);
+    color: var(--ui-warn-text);
 }
 
 .status-accepted {
-    background: #d4edda;
-    color: #155724;
+    background: var(--ui-success-bg);
+    color: var(--ui-success-text);
 }
 
-.status-rejected {
-    background: #f8d7da;
-    color: #721c24;
+.status-rejected,
+.status-cancelled {
+    background: var(--ui-danger-bg);
+    color: var(--ui-danger-text);
 }
 
-.post-preview, .response-offer {
+.response-card-body {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 18px;
     padding: 20px;
-    border-bottom: 1px solid var(--light);
 }
 
-.post-preview h4, .response-offer h4 {
-    font-size: 14px;
-    color: var(--gray);
+.info-section {
+    background: #FAFAFA;
+    border: 1px solid var(--ui-border);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ui-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
     margin-bottom: 10px;
-    font-weight: 500;
 }
 
-.post-preview p {
-    color: var(--dark);
+.main-text {
+    color: var(--ui-text);
+    line-height: 1.55;
+    margin-bottom: 14px;
+}
+
+.chips-row,
+.offer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip,
+.meta-chip,
+.offer-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--ui-soft);
+    color: var(--ui-text);
+    font-size: 13px;
+}
+
+.inline-link {
+    display: inline-block;
+    margin-top: 14px;
+    color: #2563EB;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.inline-link:hover {
+    text-decoration: underline;
+}
+
+.offer-message {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: var(--ui-text);
     line-height: 1.5;
     margin-bottom: 12px;
 }
 
-.post-meta {
+.response-card-actions {
     display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
-.post-meta span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 13px;
-    color: var(--gray);
-}
-
-.btn-link {
-    color: #3b82f6;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.btn-link:hover {
-    text-decoration: underline;
-}
-
-.offer-details {
-    margin-top: 10px;
-}
-
-.offer-details p {
-    margin: 0 0 10px 0;
-}
-
-.offer-price-time {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.offer-price-time span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--dark);
-}
-
-.response-actions {
-    padding: 15px 20px;
-    display: flex;
-    gap: 10px;
     justify-content: flex-end;
+    gap: 10px;
+    padding: 0 20px 20px;
 }
 
-.btn-edit, .btn-cancel {
-    padding: 8px 16px;
+.btn-dark,
+.btn-danger,
+.btn-light {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 10px;
     border: none;
-    border-radius: 6px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: .2s ease;
 }
 
-.btn-edit {
-    background: var(--dark);
-    color: white;
+.btn-dark {
+    background: #202020;
+    color: #fff;
 }
 
-.btn-edit:hover {
-    background: var(--gray);
+.btn-dark:hover {
+    background: #111111;
 }
 
-.btn-cancel {
-    background: #dc3545;
-    color: white;
+.btn-danger {
+    background: #DC2626;
+    color: #fff;
 }
 
-.btn-cancel:hover {
-    background: #c82333;
+.btn-danger:hover {
+    background: #B91C1C;
 }
 
-.empty-state {
+.btn-light {
+    background: #E5E7EB;
+    color: #202020;
+}
+
+.btn-light:hover {
+    background: #D1D5DB;
+}
+
+.empty-state-new {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+    padding: 56px 24px;
     text-align: center;
-    padding: 80px 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
-.empty-state i {
-    font-size: 64px;
-    color: var(--light);
+.empty-icon {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    background: var(--ui-soft);
+    color: var(--ui-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin-bottom: 18px;
+}
+
+.empty-state-new h3 {
+    font-size: 22px;
+    color: var(--ui-text);
+    margin-bottom: 10px;
+}
+
+.empty-state-new p {
+    color: var(--ui-muted);
     margin-bottom: 20px;
 }
 
-.empty-state p {
-    font-size: 18px;
-    color: var(--gray);
-    margin-bottom: 20px;
-}
-
-.btn-primary {
-    padding: 10px 24px;
-    background: var(--dark);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.btn-primary:hover {
-    background: var(--gray);
-}
-
-/* Модальное окно */
+/* modal */
 .modal {
     position: fixed;
     z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(5px);
+    inset: 0;
+    background-color: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
     display: none;
     justify-content: center;
     align-items: center;
 }
 
 .modal-content {
-    background: var(--white);
+    background: #fff;
     border-radius: 16px;
     width: 90%;
-    max-width: 500px;
+    max-width: 520px;
     max-height: 90vh;
     overflow-y: auto;
 }
 
 .modal-header {
     padding: 20px;
-    border-bottom: 1px solid var(--light);
+    border-bottom: 1px solid var(--ui-border);
     position: relative;
 }
 
@@ -403,59 +501,59 @@
 
 .close-btn {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 12px;
+    right: 14px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 26px;
     cursor: pointer;
-    color: var(--gray);
-}
-
-.modal-body {
-    padding: 20px;
+    color: var(--ui-muted);
 }
 
 .form-group {
-    margin-bottom: 15px;
+    padding: 16px 20px 0;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
+    margin-bottom: 6px;
+    font-weight: 600;
 }
 
-.form-group input, .form-group textarea {
+.form-group input,
+.form-group textarea {
     width: 100%;
-    padding: 10px;
-    border: 1px solid var(--light);
-    border-radius: 6px;
+    padding: 11px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    font-family: inherit;
 }
 
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 14px;
+    padding: 0 20px;
 }
 
 .modal-footer {
     padding: 20px;
-    border-top: 1px solid var(--light);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
 }
 
-.btn-secondary {
-    padding: 8px 16px;
-    background: var(--light);
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+@media (max-width: 900px) {
+    .response-card-body {
+        grid-template-columns: 1fr;
+    }
+
+    .responses-page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
 </style>
-
 
 <script>
 function openEditModal(responseId, message, price, date, time) {
@@ -476,13 +574,13 @@ function cancelResponse(responseId) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/master/cancel-response/${responseId}/`;
-        
+
         const csrf = document.createElement('input');
         csrf.type = 'hidden';
         csrf.name = 'csrfmiddlewaretoken';
         csrf.value = '{{ csrf_token }}';
         form.appendChild(csrf);
-        
+
         document.body.appendChild(form);
         form.submit();
     }

@@ -532,7 +532,7 @@ body.show-cursor-hint .cursor-hint{
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #e3e3db;
+  color: #E5E7EB;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -639,7 +639,7 @@ p {
   height: 10px;
   transform: scaleX(0%);
   transform-origin: center left;
-  background-color: #e3e3db;
+  background-color: #F7F7F5;
   will-change: transform;
   z-index: 2;
 }

@@ -4,226 +4,254 @@
 {% block title %}Лента постов{% endblock %}
 
 {% block content %}
-<div class="posts-header">
-    <h1>Лента постов</h1>
-    {% if user.role == 'client' %}
-    <a href="{% url 'create_post' %}" class="create-post-btn">
-        <i class="fas fa-plus"></i> Создать пост
-    </a>
-    {% endif %}
-</div>
+<div class="posts-page">
+    <div class="posts-topbar">
+        <div class="posts-title-block">
+            <h1>Лента постов</h1>
+            <p>
+                {% if user.role == 'master' %}
+                    Выберите подходящий запрос клиента и отправьте предложение
+                {% else %}
+                    Публикуйте запросы и получайте отклики от мастеров
+                {% endif %}
+            </p>
+        </div>
 
-<!-- Блок фильтрации -->
-<!-- Блок фильтрации -->
-<div class="filters-section">
-    <div class="filters-header">
-        <h3>Фильтры</h3>
-        <div class="filters-buttons">
-            <button class="filter-btn" data-filter="tags">
-                Теги <i class="fas fa-chevron-down"></i>
-            </button>
-            <button class="filter-btn" data-filter="date">
-                Дата <i class="fas fa-chevron-down"></i>
-            </button>
-            <button class="filter-btn" data-filter="price">
-                Стоимость <i class="fas fa-chevron-down"></i>
-            </button>
-            {% if current_filters.tags or current_filters.date_from or current_filters.date_to or current_filters.price_from or current_filters.price_to %}
-            <a href="{% url 'posts_list' %}" class="reset-filters-btn">
-                Сбросить <i class="fas fa-times"></i>
-            </a>
-            {% endif %}
-        </div>
+        {% if user.role == 'client' %}
+        <a href="{% url 'create_post' %}" class="primary-action-btn">
+            <i class="fas fa-plus"></i>
+            Создать пост
+        </a>
+        {% endif %}
     </div>
-    
-    <!-- Панель фильтра по тегам -->
-    <div id="filter-tags" class="filter-panel" style="display: none;">
-        <div class="filter-group">
-            <div class="tags-filter">
-                {% for tag in all_tags %}
-                <label class="tag-checkbox-filter">
-                    <input type="checkbox" name="tags" value="{{ tag.id }}" 
-                           data-filter="tags"
-                           {% if tag.id|stringformat:"s" in current_filters.tags %}checked{% endif %}>
-                    <span class="tag-label">#{{ tag.name }}</span>
-                </label>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="filter-actions">
-            <button type="button" class="btn-apply" onclick="applyFilters()">Применить</button>
-        </div>
-    </div>
-    
-    <!-- Панель фильтра по дате -->
-    <div id="filter-date" class="filter-panel" style="display: none;">
-        <div class="filter-row">
-            <div class="filter-group">
-                <label>Дата от</label>
-                <input type="date" name="date_from" id="date_from" value="{{ current_filters.date_from|default:'' }}">
-            </div>
-            <div class="filter-group">
-                <label>Дата до</label>
-                <input type="date" name="date_to" id="date_to" value="{{ current_filters.date_to|default:'' }}">
-            </div>
-        </div>
-        <div class="filter-actions">
-            <button type="button" class="btn-apply" onclick="applyFilters()">Применить</button>
-        </div>
-    </div>
-    
-    <!-- Панель фильтра по стоимости -->
-    <div id="filter-price" class="filter-panel" style="display: none;">
-        <div class="filter-row">
-            <div class="filter-group">
-                <label>Цена от (₽)</label>
-                <input type="number" name="price_from" id="price_from" placeholder="от" 
-                       value="{{ current_filters.price_from|default:'' }}" step="100">
-            </div>
-            <div class="filter-group">
-                <label>Цена до (₽)</label>
-                <input type="number" name="price_to" id="price_to" placeholder="до" 
-                       value="{{ current_filters.price_to|default:'' }}" step="100">
-            </div>
-        </div>
-        <div class="filter-actions">
-            <button type="button" class="btn-apply" onclick="applyFilters()">Применить</button>
-        </div>
-    </div>
-</div>
 
-<!-- Форма для отправки фильтров (скрытая) -->
-<form method="get" id="filtersForm" style="display: none;">
-    <div id="hidden-fields"></div>
-</form>
+    <div class="filters-shell">
+        <div class="filters-head">
+            <div>
+                <h3>Фильтры</h3>
+                <span class="filters-subtitle">Быстрый поиск нужных постов</span>
+            </div>
 
-<div class="posts-container" data-is-master="{{ is_master|yesno:'true,false' }}">
-    {% for post in posts %}
-    <div class="post-card">
-        <!-- Шапка поста -->
-        <div class="post-header">
-            <div class="post-author">
-                <div class="author-avatar">
-                    {% if post.is_anonymous %}
-                        <div class="avatar-placeholder anonymous">
-                            <i class="fas fa-user-secret"></i>
-                        </div>
-                    {% elif post.client.avatar %}
-                        <img src="{{ post.client.avatar.url }}" alt="">
-                    {% else %}
-                        <div class="avatar-placeholder">
-                            {{ post.client.full_name|first|default:"А" }}
-                        </div>
-                    {% endif %}
+            <div class="filters-actions">
+                <button class="filter-pill-btn" data-filter="tags">
+                    Теги <i class="fas fa-chevron-down"></i>
+                </button>
+                <button class="filter-pill-btn" data-filter="date">
+                    Дата <i class="fas fa-chevron-down"></i>
+                </button>
+                <button class="filter-pill-btn" data-filter="price">
+                    Стоимость <i class="fas fa-chevron-down"></i>
+                </button>
+
+                {% if current_filters.tags or current_filters.date_from or current_filters.date_to or current_filters.price_from or current_filters.price_to %}
+                <a href="{% url 'posts_list' %}" class="reset-filters-btn">
+                    Сбросить
+                    <i class="fas fa-times"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div id="filter-tags" class="filter-panel" style="display: none;">
+            <div class="filter-group">
+                <div class="tags-filter">
+                    {% for tag in all_tags %}
+                    <label class="tag-checkbox-filter">
+                        <input type="checkbox" name="tags" value="{{ tag.id }}"
+                               data-filter="tags"
+                               {% if tag.id|stringformat:"s" in current_filters.tags %}checked{% endif %}>
+                        <span class="tag-label">#{{ tag.name }}</span>
+                    </label>
+                    {% endfor %}
                 </div>
-                <div class="author-info">
-                    <div class="author-name-line">
-                        <span class="author-name">
-                            {% if post.is_anonymous %}
-                                Аноним
-                            {% else %}
-                                {{ post.client.full_name|default:"Клиент" }}
+            </div>
+            <div class="filter-actions-bottom">
+                <button type="button" class="btn-apply" onclick="applyFilters()">Применить</button>
+            </div>
+        </div>
+
+        <div id="filter-date" class="filter-panel" style="display: none;">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label>Дата от</label>
+                    <input type="date" name="date_from" id="date_from" value="{{ current_filters.date_from|default:'' }}">
+                </div>
+                <div class="filter-group">
+                    <label>Дата до</label>
+                    <input type="date" name="date_to" id="date_to" value="{{ current_filters.date_to|default:'' }}">
+                </div>
+            </div>
+            <div class="filter-actions-bottom">
+                <button type="button" class="btn-apply" onclick="applyFilters()">Применить</button>
+            </div>
+        </div>
+
+        <div id="filter-price" class="filter-panel" style="display: none;">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label>Цена от (₽)</label>
+                    <input type="number" name="price_from" id="price_from" placeholder="от"
+                           value="{{ current_filters.price_from|default:'' }}" step="100">
+                </div>
+                <div class="filter-group">
+                    <label>Цена до (₽)</label>
+                    <input type="number" name="price_to" id="price_to" placeholder="до"
+                           value="{{ current_filters.price_to|default:'' }}" step="100">
+                </div>
+            </div>
+            <div class="filter-actions-bottom">
+                <button type="button" class="btn-apply" onclick="applyFilters()">Применить</button>
+            </div>
+        </div>
+    </div>
+
+    <form method="get" id="filtersForm" style="display: none;">
+        <div id="hidden-fields"></div>
+    </form>
+
+    <div class="posts-container" data-is-master="{{ is_master|yesno:'true,false' }}">
+        {% for post in posts %}
+        <article class="post-card-new">
+            <div class="post-card-top">
+                <div class="post-author">
+                    <div class="author-avatar">
+                        {% if post.is_anonymous %}
+                            <div class="avatar-placeholder anonymous">
+                                <i class="fas fa-user-secret"></i>
+                            </div>
+                        {% elif post.client.avatar %}
+                            <img src="{{ post.client.avatar.url }}" alt="">
+                        {% else %}
+                            <div class="avatar-placeholder">
+                                {{ post.client.full_name|first|default:"А" }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="author-meta">
+                        <div class="author-main-line">
+                            <span class="author-name">
+                                {% if post.is_anonymous %}
+                                    Аноним
+                                {% else %}
+                                    {{ post.client.full_name|default:"Клиент" }}
+                                {% endif %}
+                            </span>
+                            <span class="post-time">• {{ post.time_ago }}</span>
+                        </div>
+
+                        <div class="post-meta-row">
+                            <span class="meta-badge">
+                                <i class="fas fa-calendar"></i>
+                                {{ post.preferred_date|date:"d.m.Y" }}
+                                {% if post.preferred_time %}
+                                    {{ post.preferred_time|time:"H:i" }}
+                                {% endif %}
+                            </span>
+
+                            {% if post.budget %}
+                            <span class="meta-badge">
+                                <i class="fas fa-ruble-sign"></i>
+                                {{ post.budget }} ₽
+                            </span>
                             {% endif %}
-                        </span>
-                        <span class="post-time">• {{ post.time_ago }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="post-menu">
+                    <button class="menu-btn" onclick="toggleMenu({{ post.id }})">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <div id="menu-{{ post.id }}" class="dropdown-menu" style="display: none;">
+                        {% if post.client.user == user %}
+                            <button onclick="deletePost({{ post.id }})">
+                                <i class="fas fa-trash"></i> Удалить пост
+                            </button>
+                            <button onclick="alert('Редактирование в разработке')">
+                                <i class="fas fa-edit"></i> Редактировать
+                            </button>
+                        {% else %}
+                            <button onclick="reportPost({{ post.id }})">
+                                <i class="fas fa-flag"></i> Пожаловаться
+                            </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            
-            <!-- Три точки (меню) -->
-            <div class="post-menu">
-                <button class="menu-btn" onclick="toggleMenu({{ post.id }})">
-                    <i class="fas fa-ellipsis-v"></i>
-                </button>
-                <div id="menu-{{ post.id }}" class="dropdown-menu" style="display: none;">
-                    {% if post.client.user == user %}
-                        <button onclick="deletePost({{ post.id }})">
-                            <i class="fas fa-trash"></i> Удалить пост
-                        </button>
-                        <button onclick="alert('Редактирование в разработке')">
-                            <i class="fas fa-edit"></i> Редактировать
-                        </button>
-                    {% else %}
-                        <button onclick="reportPost({{ post.id }})">
-                            <i class="fas fa-flag"></i> Пожаловаться
-                        </button>
-                    {% endif %}
-                </div>
+
+            <div class="post-content">
+                <p>{{ post.description }}</p>
             </div>
-        </div>
-        
-        <!-- Текст поста -->
-        <div class="post-description">
-            <p>{{ post.description }}</p>
-        </div>
-        
-        <!-- Детали записи (вертикально) -->
-        <div class="post-details-vertical">
-            <div class="detail-item">
-                <i class="fas fa-calendar"></i>
-                <span>{{ post.preferred_date|date:"d.m.Y" }}</span>
-                {% if post.preferred_time %}
-                <span class="time">{{ post.preferred_time|time:"H:i" }}</span>
-                {% endif %}
+
+            <div class="post-tags-row">
+                {% for tag in post.tags.all %}
+                    <a href="?tags={{ tag.id }}" class="post-tag-chip">#{{ tag.name }}</a>
+                {% empty %}
+                    <span class="post-tag-chip muted">#теги_не_указаны</span>
+                {% endfor %}
             </div>
-            {% if post.budget %}
-            <div class="detail-item">
-                <i class="fas fa-ruble-sign"></i>
-                <span>{{ post.budget }} ₽</span>
+
+            {% if post.image %}
+            <div class="post-image-wrap">
+                <img src="{{ post.image.url }}" alt="Фото поста">
             </div>
             {% endif %}
-        </div>
-        
-        <!-- Теги -->
-        <div class="post-tags">
-            {% for tag in post.tags.all %}
-                <a href="?tags={{ tag.id }}" class="tag">#{{ tag.name }}</a>
-            {% empty %}
-                <span class="tag empty">#теги_не_указаны</span>
-            {% endfor %}
-        </div>
-        
-        <!-- Фото -->
-        {% if post.image %}
-        <div class="post-image">
-            <img src="{{ post.image.url }}" alt="Фото поста">
-        </div>
-        {% endif %}
 
-        <div class="post-footer">
-          <button class="response-btn {% if user.role == 'master' and post.id in user_responses %}active{% endif %}"
-                data-post-id="{{ post.id }}"
-                data-preferred-date="{{ post.preferred_date|date:'Y-m-d' }}"
-                data-preferred-time="{{ post.preferred_time|time:'H:i' }}"
-                data-budget="{{ post.budget }}"
-                {% if user.role != 'master' %}disabled{% endif %}>
-            <span class="heart-icon">❤️</span>
-            <span class="response-text">
-                {% if user.role == 'master' %}
-                    Откликнуться
+            <div class="post-card-footer">
+                <button class="response-btn-new {% if user.role == 'master' and post.id in user_responses %}active{% endif %}"
+                        data-post-id="{{ post.id }}"
+                        data-preferred-date="{{ post.preferred_date|date:'Y-m-d' }}"
+                        data-preferred-time="{{ post.preferred_time|time:'H:i' }}"
+                        data-budget="{{ post.budget }}"
+                        {% if user.role != 'master' %}disabled{% endif %}>
+                    <span class="response-icon-wrap">
+                        {% if user.role == 'master' %}
+                            <i class="fas fa-paper-plane"></i>
+                        {% else %}
+                            <i class="fas fa-comment-dots"></i>
+                        {% endif %}
+                    </span>
+
+                    <span class="response-btn-text">
+                        {% if user.role == 'master' %}
+                            Откликнуться
+                        {% else %}
+                            Отклики
+                        {% endif %}
+                    </span>
+
+                    <span class="response-counter">{{ post.responses.count }}</span>
+                </button>
+            </div>
+        </article>
+        {% empty %}
+        <div class="empty-state-posts">
+            <div class="empty-icon">
+                <i class="fas fa-newspaper"></i>
+            </div>
+            <h3>{% if request.GET %}Постов не найдено{% else %}Пока нет постов{% endif %}</h3>
+            <p>
+                {% if request.GET %}
+                    Попробуйте изменить фильтры и посмотреть другие варианты.
                 {% else %}
-                    Отклики
+                    {% if user.role == 'client' %}
+                        Создайте первый пост и получите отклики от мастеров.
+                    {% else %}
+                        Пока клиенты не опубликовали посты.
+                    {% endif %}
                 {% endif %}
-            </span>
-            <span class="response-count">{{ post.responses.count }}</span>
-        </button>
-      </div>
-
-
+            </p>
+            {% if user.role == 'client' and not request.GET %}
+            <a href="{% url 'create_post' %}" class="primary-action-btn">
+                Создать первый пост
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
     </div>
-    {% empty %}
-    <div class="empty-state">
-        <i class="fas fa-newspaper"></i>
-        <p>{% if request.GET %}Постов не найдено{% else %}Пока нет постов{% endif %}</p>
-        {% if user.role == 'client' and not request.GET %}
-        <a href="{% url 'create_post' %}" class="btn-primary">Создать первый пост</a>
-        {% endif %}
-    </div>
-    {% endfor %}
 </div>
 
-<!-- Модальное окно для отклика -->
-<!-- Модальное окно для отклика -->
 <div id="responseModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -233,20 +261,20 @@
         <div class="modal-body">
             <div class="info-note">
                 <i class="fas fa-info-circle"></i>
-                <span>Вы можете изменить предложение, если хотите предложить другие условия</span>
+                <span>Вы можете предложить свои условия или оставить данные клиента без изменений</span>
             </div>
-            
+
             <div class="form-group">
-                <label>Сообщение мастеру</label>
+                <label>Сообщение клиенту</label>
                 <textarea id="response_message" rows="3" placeholder="Напишите сообщение клиенту..."></textarea>
             </div>
-            
+
             <div class="form-group">
                 <label>Предлагаемая цена (₽)</label>
                 <input type="number" id="response_price" step="100">
                 <small class="help-text" id="price_hint"></small>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Предлагаемая дата</label>
@@ -269,115 +297,137 @@
 
 <style>
 :root {
-    --dark: #202020;
-    --gray: #3a3a3a;
-    --light: #e3e3db;
-    --white: #ffffff;
+    --ui-bg: #F7F7F5;
+    --ui-card: #FFFFFF;
+    --ui-border: #E5E7EB;
+    --ui-text: #202020;
+    --ui-muted: #6B7280;
+    --ui-soft: #F3F4F6;
+    --ui-soft-2: #FAFAFA;
+    --ui-dark: #202020;
+    --ui-blue: #2563EB;
+    --ui-danger: #DC2626;
 }
 
-.posts-header {
+.posts-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.posts-topbar {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
+    align-items: flex-start;
+    gap: 16px;
     flex-wrap: wrap;
-    gap: 15px;
 }
 
-.posts-header h1 {
-    color: var(--dark);
-    font-size: 28px;
+.posts-title-block h1 {
+    font-size: 30px;
+    line-height: 1.15;
+    color: var(--ui-text);
+    margin-bottom: 8px;
 }
 
-.create-post-btn {
-    padding: 10px 20px;
-    background: var(--dark);
-    color: white;
+.posts-title-block p {
+    color: var(--ui-muted);
+    font-size: 15px;
+}
+
+.primary-action-btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    background: var(--ui-dark);
+    color: #fff;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.3s;
+    transition: .2s ease;
     text-decoration: none;
+    font-weight: 700;
 }
 
-.create-post-btn:hover {
-    background: var(--gray);
-    transform: translateY(-2px);
+.primary-action-btn:hover {
+    background: #111111;
+    transform: translateY(-1px);
 }
 
-/* Стили для фильтрации */
-.filters-section {
-    background: var(--white);
-    border-radius: 12px;
-    margin-bottom: 30px;
-    padding: 15px 20px;
-    border: 1px solid var(--light);
+/* filters */
+.filters-shell {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 18px;
+    padding: 18px 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
-.filters-header {
+.filters-head {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 14px;
     flex-wrap: wrap;
-    gap: 15px;
 }
 
-.filters-header h3 {
+.filters-head h3 {
     font-size: 18px;
-    font-weight: 500;
-    color: var(--dark);
-    margin: 0;
+    color: var(--ui-text);
+    margin-bottom: 4px;
 }
 
-.filters-buttons {
+.filters-subtitle {
+    font-size: 13px;
+    color: var(--ui-muted);
+}
+
+.filters-actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
     align-items: center;
 }
 
-.filter-btn {
-    background: none;
-    border: 1px solid var(--light);
-    padding: 8px 16px;
-    border-radius: 30px;
+.filter-pill-btn {
+    background: #fff;
+    border: 1px solid var(--ui-border);
+    padding: 9px 14px;
+    border-radius: 999px;
     font-size: 14px;
-    font-weight: 500;
-    color: var(--dark);
+    font-weight: 600;
+    color: var(--ui-text);
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.filter-btn:hover {
-    background: var(--light);
+.filter-pill-btn:hover {
+    background: var(--ui-soft);
 }
 
-.filter-btn.active {
-    background: var(--dark);
-    color: white;
-    border-color: var(--dark);
+.filter-pill-btn.active {
+    background: var(--ui-dark);
+    color: #fff;
+    border-color: var(--ui-dark);
 }
 
-.filter-btn.active i {
+.filter-pill-btn.active i {
     transform: rotate(180deg);
 }
 
 .reset-filters-btn {
     background: none;
-    border: 1px solid #dc3545;
-    padding: 8px 16px;
-    border-radius: 30px;
+    border: 1px solid #FCA5A5;
+    padding: 9px 14px;
+    border-radius: 999px;
     font-size: 14px;
-    font-weight: 500;
-    color: #dc3545;
-    cursor: pointer;
-    transition: all 0.3s;
+    font-weight: 600;
+    color: var(--ui-danger);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -385,22 +435,20 @@
 }
 
 .reset-filters-btn:hover {
-    background: #dc3545;
-    color: white;
+    background: #FEF2F2;
 }
 
-/* Панели фильтров */
 .filter-panel {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--light);
-    animation: slideDown 0.3s ease;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--ui-border);
+    animation: fadeDown .25s ease;
 }
 
-@keyframes slideDown {
+@keyframes fadeDown {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-6px);
     }
     to {
         opacity: 1;
@@ -408,19 +456,34 @@
     }
 }
 
-.filter-group {
-    margin-bottom: 15px;
+.filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
 }
 
 .filter-group label {
     display: block;
     font-size: 13px;
-    font-weight: 500;
-    color: var(--dark);
+    font-weight: 700;
+    color: var(--ui-text);
     margin-bottom: 8px;
 }
 
-/* Теги в фильтре */
+.filter-group input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.filter-group input:focus {
+    outline: none;
+    border-color: var(--ui-dark);
+}
+
 .tags-filter {
     display: flex;
     flex-wrap: wrap;
@@ -441,109 +504,80 @@
 
 .tag-checkbox-filter .tag-label {
     display: inline-block;
-    padding: 6px 14px;
-    background: var(--light);
-    border-radius: 30px;
+    padding: 8px 14px;
+    background: var(--ui-soft);
+    border-radius: 999px;
     font-size: 13px;
-    font-weight: 500;
-    color: var(--dark);
-    transition: all 0.2s;
-    cursor: pointer;
+    font-weight: 600;
+    color: var(--ui-text);
+    transition: .2s ease;
 }
 
 .tag-checkbox-filter input:checked + .tag-label {
-    background: #3b82f6;
+    background: var(--ui-dark);
     color: white;
 }
 
-.tag-checkbox-filter:hover .tag-label {
-    transform: translateY(-1px);
-}
-
-/* Ряды фильтров */
-.filter-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 15px;
-}
-
-.filter-group input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--light);
-    border-radius: 8px;
-    font-size: 14px;
-    transition: all 0.3s;
-    box-sizing: border-box;
-}
-
-.filter-group input:focus {
-    outline: none;
-    border-color: var(--dark);
-}
-
-.filter-actions {
+.filter-actions-bottom {
     display: flex;
     justify-content: flex-end;
-    margin-top: 10px;
+    margin-top: 14px;
 }
 
 .btn-apply {
-    padding: 8px 20px;
-    background: var(--dark);
-    color: white;
+    min-height: 40px;
+    padding: 8px 18px;
+    background: var(--ui-dark);
+    color: #fff;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s;
 }
 
 .btn-apply:hover {
-    background: var(--gray);
+    background: #111111;
 }
 
-/* Контейнер постов */
+/* posts */
 .posts-container {
-    max-width: 680px;
+    max-width: 760px;
     margin: 0 auto;
+    width: 100%;
 }
 
-.post-card {
-    background: var(--white);
-    border-radius: 12px;
+.post-card-new {
+    background: var(--ui-card);
+    border-radius: 20px;
     margin-bottom: 20px;
     padding: 20px;
-    border: 1px solid var(--light);
-    transition: box-shadow 0.3s;
+    border: 1px solid var(--ui-border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
-.post-card:hover {
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-}
-
-/* Шапка поста */
-.post-header {
+.post-card-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 15px;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
 .post-author {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 14px;
+    min-width: 0;
 }
 
 .author-avatar {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
     border-radius: 50%;
     overflow: hidden;
-    background: var(--dark);
+    background: var(--ui-dark);
     color: white;
     display: flex;
     align-items: center;
@@ -556,77 +590,94 @@
     object-fit: cover;
 }
 
-.author-avatar.anonymous {
-    background: var(--gray);
-}
-
-.author-avatar.anonymous i {
-    font-size: 24px;
-}
-
 .avatar-placeholder {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    font-weight: 500;
+    font-size: 22px;
+    font-weight: 700;
 }
 
-.author-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+.avatar-placeholder.anonymous {
+    background: #3A3A3A;
 }
 
-.author-name-line {
+.author-meta {
+    min-width: 0;
+}
+
+.author-main-line {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    margin-bottom: 8px;
 }
 
 .author-name {
-    font-weight: 600;
-    color: var(--dark);
+    font-weight: 700;
+    color: var(--ui-text);
+    font-size: 16px;
 }
 
 .post-time {
     font-size: 12px;
-    color: var(--gray);
+    color: var(--ui-muted);
 }
 
-/* Меню */
+.post-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--ui-soft);
+    color: var(--ui-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .post-menu {
     position: relative;
 }
 
 .menu-btn {
+    width: 36px;
+    height: 36px;
     background: none;
-    border: none;
-    font-size: 18px;
-    color: var(--gray);
+    border: 1px solid var(--ui-border);
+    font-size: 14px;
+    color: var(--ui-muted);
     cursor: pointer;
-    padding: 5px;
     border-radius: 50%;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
 }
 
 .menu-btn:hover {
-    background: var(--light);
+    background: var(--ui-soft);
+    color: var(--ui-text);
 }
 
 .dropdown-menu {
     position: absolute;
-    top: 30px;
+    top: 42px;
     right: 0;
-    background: var(--white);
-    border: 1px solid var(--light);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.08);
     z-index: 10;
-    min-width: 150px;
+    min-width: 180px;
+    overflow: hidden;
 }
 
 .dropdown-menu button {
@@ -634,250 +685,207 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 10px 15px;
+    padding: 12px 14px;
     background: none;
     border: none;
     text-align: left;
     cursor: pointer;
     font-size: 14px;
-    color: var(--dark);
-    transition: background 0.3s;
+    color: var(--ui-text);
 }
 
 .dropdown-menu button:hover {
-    background: var(--light);
+    background: var(--ui-soft);
 }
 
-/* Описание поста */
-.post-description {
-    margin-bottom: 15px;
+.post-content {
+    margin-bottom: 16px;
 }
 
-.post-description p {
-    color: var(--gray);
-    line-height: 1.5;
+.post-content p {
+    color: #374151;
+    line-height: 1.6;
+    font-size: 15px;
 }
 
-/* Детали записи вертикально */
-.post-details-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 15px;
-    padding: 12px;
-    background: var(--light);
-    border-radius: 8px;
-}
-
-.post-details-vertical .detail-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--dark);
-}
-
-.post-details-vertical .detail-item i {
-    width: 20px;
-    color: var(--gray);
-}
-
-.post-details-vertical .detail-item .time {
-    font-weight: 500;
-    margin-left: 5px;
-}
-
-/* Теги */
-.post-tags {
-    margin-bottom: 15px;
+.post-tags-row {
+    margin-bottom: 16px;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.tag {
-    display: inline-block;
-    padding: 4px 8px;
-    background: none;
-    border-radius: 4px;
+.post-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #EFF6FF;
+    color: #1D4ED8;
     font-size: 13px;
-    font-weight: 500;
-    color: #3b82f6;
+    font-weight: 600;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: .2s ease;
 }
 
-.tag:hover {
-    color: #1e40af;
-    text-decoration: underline;
+.post-tag-chip:hover {
+    background: #DBEAFE;
 }
 
-.tag.empty {
-    color: var(--gray);
-    font-style: italic;
+.post-tag-chip.muted {
+    background: var(--ui-soft);
+    color: var(--ui-muted);
     cursor: default;
 }
 
-/* Фото */
-.post-image {
-    margin-top: 15px;
-    border-radius: 8px;
+.post-image-wrap {
+    margin-top: 4px;
+    border-radius: 16px;
     overflow: hidden;
+    border: 1px solid var(--ui-border);
 }
 
-.post-image img {
+.post-image-wrap img {
     width: 100%;
-    max-height: 500px;
+    max-height: 520px;
     object-fit: cover;
+    display: block;
 }
 
-/* Пустое состояние */
-.empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--gray);
-}
-
-.empty-state i {
-    font-size: 64px;
-    color: var(--light);
-    margin-bottom: 20px;
-}
-
-.empty-state p {
-    font-size: 18px;
-    margin-bottom: 20px;
-}
-
-.btn-primary {
-    padding: 10px 24px;
-    background: var(--dark);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.btn-primary:hover {
-    background: var(--gray);
-}
-
-/* Адаптивность */
-@media (max-width: 600px) {
-    .filter-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .filters-form {
-        padding: 0 15px 15px 15px;
-    }
-    
-    .post-card {
-        padding: 15px;
-    }
-}
-
-
-/* Кнопка отклика */
-.post-footer {
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid var(--light);
+.post-card-footer {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--ui-border);
     display: flex;
     justify-content: flex-end;
 }
 
-.response-btn {
+.response-btn-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 16px;
+    background: #fff;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ui-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.response-btn-new:hover {
+    background: var(--ui-soft);
+}
+
+.response-btn-new.active {
+    background: #202020;
+    color: #fff;
+    border-color: #202020;
+}
+
+.response-btn-new[disabled] {
+    opacity: .7;
+    cursor: default;
+}
+
+.response-btn-new[disabled]:hover {
+    background: #fff;
+}
+
+.response-icon-wrap {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--ui-soft);
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: none;
-    border: none;
-    border-radius: 30px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--gray);
-    cursor: pointer;
-    transition: all 0.3s;
+    justify-content: center;
+    font-size: 12px;
 }
 
-.response-btn:hover {
-    background: var(--light);
-    transform: scale(1.02);
+.response-btn-new.active .response-icon-wrap {
+    background: rgba(255,255,255,0.14);
 }
 
-.response-btn.active {
-    background: #ffebee;
-    color: #e74c3c;
+.response-counter {
+    min-width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--ui-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
 }
 
-.response-btn.active .heart-icon {
-    animation: heartBeat 0.3s ease;
+.response-btn-new.active .response-counter {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
 }
 
-.heart-icon {
-    font-size: 18px;
-    transition: transform 0.2s;
-}
-
-.response-btn:hover .heart-icon {
-    transform: scale(1.2);
-}
-
-.response-count {
-    font-weight: 600;
-    min-width: 24px;
+.empty-state-posts {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+    padding: 60px 24px;
     text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
-@keyframes heartBeat {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.3); }
-    100% { transform: scale(1); }
+.empty-icon {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: var(--ui-soft);
+    color: var(--ui-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin-bottom: 18px;
 }
 
-/* Для мастеров при наведении */
-.response-btn[disabled] {
-    cursor: not-allowed;
-    opacity: 0.6;
+.empty-state-posts h3 {
+    font-size: 22px;
+    color: var(--ui-text);
+    margin-bottom: 10px;
 }
 
-.response-btn[disabled]:hover {
-    background: none;
-    transform: none;
+.empty-state-posts p {
+    color: var(--ui-muted);
+    margin-bottom: 22px;
+    line-height: 1.5;
 }
 
-
+/* modal */
 .modal {
     position: fixed;
     z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(5px);
+    inset: 0;
+    background-color: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
     display: none;
     justify-content: center;
     align-items: center;
 }
 
 .modal-content {
-    background: var(--white);
-    border-radius: 16px;
+    background: #fff;
+    border-radius: 18px;
     width: 90%;
-    max-width: 500px;
+    max-width: 520px;
     max-height: 90vh;
     overflow-y: auto;
 }
 
 .modal-header {
     padding: 20px;
-    border-bottom: 1px solid var(--light);
+    border-bottom: 1px solid var(--ui-border);
     position: relative;
 }
 
@@ -888,13 +896,13 @@
 
 .close-btn {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 12px;
+    right: 14px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 26px;
     cursor: pointer;
-    color: var(--gray);
+    color: var(--ui-muted);
 }
 
 .modal-body {
@@ -903,40 +911,113 @@
 
 .modal-footer {
     padding: 20px;
-    border-top: 1px solid var(--light);
+    border-top: 1px solid var(--ui-border);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
 }
 
-.info-note {
-    background: var(--light);
-    padding: 10px 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--dark);
+.form-group {
+    margin-bottom: 16px;
 }
 
-.info-note i {
-    font-size: 16px;
-    color: #3b82f6;
+.form-group label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+    color: var(--ui-text);
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.info-note {
+    background: var(--ui-soft);
+    padding: 12px 14px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--ui-text);
 }
 
 .help-text {
     display: block;
     font-size: 11px;
-    color: var(--gray);
+    color: var(--ui-muted);
     margin-top: 5px;
+}
+
+.btn-primary,
+.btn-secondary {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #202020;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #111111;
+}
+
+.btn-secondary {
+    background: #E5E7EB;
+    color: #202020;
+}
+
+.btn-secondary:hover {
+    background: #D1D5DB;
+}
+
+@media (max-width: 700px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .post-card-new {
+        padding: 16px;
+    }
+
+    .posts-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .post-card-footer {
+        justify-content: stretch;
+    }
+
+    .response-btn-new {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 
 <script>
-
-
 let currentPostId = null;
 
 function closeResponseModal() {
@@ -950,68 +1031,47 @@ function submitResponse() {
     const price = document.getElementById('response_price').value;
     const date = document.getElementById('response_date').value;
     const time = document.getElementById('response_time').value;
-    
-    console.log('Отправка отклика:', {message, price, date, time, postId: currentPostId});
-    
+
     if (!message && !price && !date && !time) {
         alert('Заполните хотя бы одно поле');
         return;
     }
-    
+
     sendResponse(currentPostId, message, price, date, time);
     closeResponseModal();
 }
 
-
-
-// Функция для отклика на пост
 async function toggleResponse(postId) {
-    console.log('toggleResponse вызвана для postId:', postId);
-    
-    // Проверяем, что пользователь - мастер
     const isMaster = {{ is_master|yesno:"true,false" }};
     if (!isMaster) {
         alert('Только мастера могут откликаться');
         return;
     }
-    
-    // Открываем модальное окно, передавая postId
     openResponseModal(postId);
 }
 
-// Функция для открытия модального окна (принимает postId)
 function openResponseModal(postId) {
-    console.log('openResponseModal вызвана для postId:', postId);
-    
-    // Находим кнопку по data-post-id
-    const button = document.querySelector(`.response-btn[data-post-id="${postId}"]`);
-    if (!button) {
-        console.error('Кнопка не найдена для postId:', postId);
-        return;
-    }
-    
-    // Получаем данные из кнопки
+    const button = document.querySelector(`.response-btn-new[data-post-id="${postId}"]`);
+    if (!button) return;
+
     const preferredDate = button.getAttribute('data-preferred-date');
     const preferredTime = button.getAttribute('data-preferred-time');
     const budget = button.getAttribute('data-budget');
-    
+
     currentPostId = postId;
     const modal = document.getElementById('responseModal');
     if (modal) {
         modal.style.display = 'flex';
         document.body.classList.add('modal-open');
-        
-        // Поля ввода
+
         const priceInput = document.getElementById('response_price');
         const dateInput = document.getElementById('response_date');
         const timeInput = document.getElementById('response_time');
-        
-        // Подсказки
+
         const priceHint = document.getElementById('price_hint');
         const dateHint = document.getElementById('date_hint');
         const timeHint = document.getElementById('time_hint');
-        
-        // Устанавливаем значения и подсказки
+
         if (budget && budget !== 'None' && budget !== 'null') {
             priceInput.value = budget;
             if (priceHint) priceHint.innerHTML = `<i class="fas fa-info-circle"></i> Клиент указал бюджет: ${budget} ₽`;
@@ -1019,7 +1079,7 @@ function openResponseModal(postId) {
             priceInput.value = '';
             if (priceHint) priceHint.innerHTML = '';
         }
-        
+
         if (preferredDate && preferredDate !== 'None' && preferredDate !== 'null') {
             dateInput.value = preferredDate;
             if (dateHint) dateHint.innerHTML = `<i class="fas fa-info-circle"></i> Клиент указал дату: ${preferredDate}`;
@@ -1027,7 +1087,7 @@ function openResponseModal(postId) {
             dateInput.value = '';
             if (dateHint) dateHint.innerHTML = '';
         }
-        
+
         if (preferredTime && preferredTime !== 'None' && preferredTime !== 'null') {
             timeInput.value = preferredTime;
             if (timeHint) timeHint.innerHTML = `<i class="fas fa-info-circle"></i> Клиент указал время: ${preferredTime}`;
@@ -1035,18 +1095,15 @@ function openResponseModal(postId) {
             timeInput.value = '';
             if (timeHint) timeHint.innerHTML = '';
         }
-        
-        // Очищаем сообщение
+
         const messageField = document.getElementById('response_message');
         if (messageField) messageField.value = '';
-    } else {
-        console.error('Модальное окно не найдено');
     }
 }
 
 async function sendResponse(postId, message, price, date, time) {
-    const btn = document.querySelector(`.response-btn[data-post-id="${postId}"]`);
-    
+    const btn = document.querySelector(`.response-btn-new[data-post-id="${postId}"]`);
+
     try {
         const response = await fetch(`/client/toggle-response/${postId}/`, {
             method: 'POST',
@@ -1061,28 +1118,17 @@ async function sendResponse(postId, message, price, date, time) {
                 proposed_time: time
             })
         });
-        
+
         const data = await response.json();
-        console.log('Ответ сервера:', data);
-        
+
         if (response.ok) {
-            // Обновляем счетчик
-            const countSpan = btn.querySelector('.response-count');
+            const countSpan = btn.querySelector('.response-counter');
             if (countSpan) {
                 countSpan.textContent = data.count;
             }
-            
-            // Обновляем активный класс
+
             if (data.action === 'added') {
                 btn.classList.add('active');
-                // Анимация сердечка
-                const heart = btn.querySelector('.heart-icon');
-                if (heart) {
-                    heart.style.animation = 'heartBeat 0.3s ease';
-                    setTimeout(() => {
-                        heart.style.animation = '';
-                    }, 300);
-                }
                 alert('Отклик успешно отправлен!');
             } else if (data.action === 'removed') {
                 btn.classList.remove('active');
@@ -1097,60 +1143,35 @@ async function sendResponse(postId, message, price, date, time) {
     }
 }
 
-
-// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Страница загружена');
-    
-    const btns = document.querySelectorAll('.response-btn');
-    console.log('Найдено кнопок отклика:', btns.length);
-    
-    btns.forEach(btn => {
-        // Убираем старый обработчик
+    document.querySelectorAll('.response-btn-new').forEach(btn => {
         btn.removeEventListener('click', btn._clickHandler);
-        
+
         const handler = function(e) {
             e.preventDefault();
             const postId = this.getAttribute('data-post-id');
-            console.log('Клик по кнопке, postId:', postId);
             toggleResponse(postId);
         };
-        
+
         btn._clickHandler = handler;
         btn.addEventListener('click', handler);
     });
 });
 
-
-// Добавляем обработчики для всех кнопок отклика
-document.querySelectorAll('.response-btn').forEach(btn => {
-    if (!btn.hasAttribute('data-listener')) {
-        btn.setAttribute('data-listener', 'true');
-        // Убираем стандартный onclick, если он уже есть
-        const postId = btn.dataset.postId;
-        btn.onclick = () => toggleResponse(postId);
-    }
-});
-
-
-// Управление фильтрами
-document.querySelectorAll('.filter-btn').forEach(btn => {
+document.querySelectorAll('.filter-pill-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const filterType = this.dataset.filter;
         const panel = document.getElementById(`filter-${filterType}`);
         const isVisible = panel.style.display === 'block';
-        
-        // Закрываем все панели
+
         document.querySelectorAll('.filter-panel').forEach(p => {
             p.style.display = 'none';
         });
-        
-        // Убираем активный класс у всех кнопок
-        document.querySelectorAll('.filter-btn').forEach(b => {
+
+        document.querySelectorAll('.filter-pill-btn').forEach(b => {
             b.classList.remove('active');
         });
-        
-        // Открываем выбранную панель
+
         if (!isVisible) {
             panel.style.display = 'block';
             this.classList.add('active');
@@ -1158,19 +1179,16 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     });
 });
 
-// Применение фильтров
 function applyFilters() {
     const form = document.getElementById('filtersForm');
     const hiddenFields = document.getElementById('hidden-fields');
     hiddenFields.innerHTML = '';
-    
-    // Собираем выбранные теги
+
     const selectedTags = [];
     document.querySelectorAll('input[name="tags"]:checked').forEach(checkbox => {
         selectedTags.push(checkbox.value);
     });
-    
-    // Добавляем теги
+
     selectedTags.forEach(tagId => {
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -1178,8 +1196,7 @@ function applyFilters() {
         input.value = tagId;
         hiddenFields.appendChild(input);
     });
-    
-    // Добавляем даты
+
     const dateFrom = document.getElementById('date_from').value;
     const dateTo = document.getElementById('date_to').value;
     if (dateFrom) {
@@ -1196,8 +1213,7 @@ function applyFilters() {
         input.value = dateTo;
         hiddenFields.appendChild(input);
     }
-    
-    // Добавляем цены
+
     const priceFrom = document.getElementById('price_from').value;
     const priceTo = document.getElementById('price_to').value;
     if (priceFrom) {
@@ -1214,66 +1230,29 @@ function applyFilters() {
         input.value = priceTo;
         hiddenFields.appendChild(input);
     }
-    
+
     form.submit();
 }
 
-// Закрытие панели при клике вне
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('.filter-btn') && !e.target.closest('.filter-panel')) {
+    if (!e.target.closest('.filter-pill-btn') && !e.target.closest('.filter-panel')) {
         document.querySelectorAll('.filter-panel').forEach(p => {
             p.style.display = 'none';
         });
-        document.querySelectorAll('.filter-btn').forEach(b => {
+        document.querySelectorAll('.filter-pill-btn').forEach(b => {
             b.classList.remove('active');
         });
     }
 });
 
-// Если есть активные фильтры, показываем кнопку сброса
-document.addEventListener('DOMContentLoaded', function() {
-    const hasFilters = 
-        '{{ current_filters.tags|length }}' > 0 ||
-        '{{ current_filters.date_from|default:"" }}' != '' ||
-        '{{ current_filters.date_to|default:"" }}' != '' ||
-        '{{ current_filters.price_from|default:"" }}' != '' ||
-        '{{ current_filters.price_to|default:"" }}' != '';
-    
-    if (hasFilters) {
-        // Можно добавить индикатор на кнопки
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.style.borderColor = '#3b82f6';
-            btn.style.color = '#3b82f6';
-        });
-    }
-});
-
-
-
-
-function toggleFilters() {
-    const form = document.getElementById('filtersForm');
-    const btn = document.querySelector('.toggle-filters-btn');
-    
-    if (form.style.display === 'none') {
-        form.style.display = 'block';
-        btn.innerHTML = '<i class="fas fa-chevron-up"></i> Скрыть фильтры';
-    } else {
-        form.style.display = 'none';
-        btn.innerHTML = '<i class="fas fa-chevron-down"></i> Показать фильтры';
-    }
-}
-
 function toggleMenu(postId) {
     const menu = document.getElementById(`menu-${postId}`);
     const isVisible = menu.style.display === 'block';
-    
-    // Закрываем все меню
+
     document.querySelectorAll('.dropdown-menu').forEach(m => {
         m.style.display = 'none';
     });
-    
-    // Открываем текущее
+
     if (!isVisible) {
         menu.style.display = 'block';
     }
@@ -1284,13 +1263,13 @@ function deletePost(postId) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/client/delete-post/${postId}/`;
-        
+
         const csrf = document.createElement('input');
         csrf.type = 'hidden';
         csrf.name = 'csrfmiddlewaretoken';
         csrf.value = '{{ csrf_token }}';
         form.appendChild(csrf);
-        
+
         document.body.appendChild(form);
         form.submit();
     }
@@ -1302,47 +1281,29 @@ function reportPost(postId) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/client/report-post/${postId}/`;
-        
+
         const csrf = document.createElement('input');
         csrf.type = 'hidden';
         csrf.name = 'csrfmiddlewaretoken';
         csrf.value = '{{ csrf_token }}';
         form.appendChild(csrf);
-        
+
         const reasonInput = document.createElement('input');
         reasonInput.type = 'hidden';
         reasonInput.name = 'reason';
         reasonInput.value = reason;
         form.appendChild(reasonInput);
-        
+
         document.body.appendChild(form);
         form.submit();
     }
 }
 
-// Закрытие меню при клике вне
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.post-menu')) {
         document.querySelectorAll('.dropdown-menu').forEach(m => {
             m.style.display = 'none';
         });
-    }
-});
-
-// Если есть активные фильтры, показываем форму сразу
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('filtersForm');
-    const hasFilters = 
-        '{{ current_filters.tags|length }}' > 0 ||
-        '{{ current_filters.date_from|default:"" }}' != '' ||
-        '{{ current_filters.date_to|default:"" }}' != '' ||
-        '{{ current_filters.price_from|default:"" }}' != '' ||
-        '{{ current_filters.price_to|default:"" }}' != '';
-    
-    if (hasFilters) {
-        form.style.display = 'block';
-        document.querySelector('.toggle-filters-btn').innerHTML = 
-            '<i class="fas fa-chevron-up"></i> Скрыть фильтры';
     }
 });
 </script>
