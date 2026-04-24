@@ -15,6 +15,7 @@ from notifications.models import Notification
 from .models import MasterProfile
 import requests
 from django.conf import settings
+from .models import MasterProfile, Portfolio, Service, ServiceCategory
 
 
 def geocode_yandex_address(address: str):
@@ -72,21 +73,20 @@ def masters_list(request):
     masters_map_data = []
 
     for master in masters:
-        try:
-            portfolio = master.portfolio_set.all()[:5]
-        except:
-            portfolio = []
+        portfolio = list(
+            Portfolio.objects.filter(master=master).order_by('-created_at')[:3]
+        )
 
         try:
             services = master.services.filter(is_active=True)[:3]
-        except:
+        except Exception:
             services = []
 
         try:
             avg_price = master.services.filter(is_active=True).aggregate(
                 Avg('price')
             )['price__avg'] or 0
-        except:
+        except Exception:
             avg_price = 0
 
         try:
@@ -97,7 +97,7 @@ def masters_list(request):
             )
             rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
             reviews_count = reviews.count()
-        except:
+        except Exception:
             rating = 0
             reviews_count = 0
 
@@ -291,6 +291,17 @@ def master_dashboard(request):
         status='active'
     ).order_by('date', 'time')[:5]
 
+    portfolio_items = Portfolio.objects.filter(
+        master=master_profile
+    ).order_by('-created_at')[:3]
+
+    master_services = Service.objects.filter(
+        master=master_profile,
+        is_active=True
+    ).select_related('category').order_by('created_at')
+
+    service_categories = ServiceCategory.objects.all()
+
     context = {
         'master': master_profile,
         'user': request.user,
@@ -305,6 +316,9 @@ def master_dashboard(request):
         'month_name': get_month_name(current_month),
         'upcoming_bookings': upcoming_bookings,
         'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
+        'portfolio_items': portfolio_items,
+        'master_services': master_services,
+        'service_categories': service_categories,
     }
 
     return render(request, 'masters/dashboard.html', context)
@@ -563,84 +577,6 @@ def reschedule_booking(request, booking_id):
 
 
 @login_required
-def masters_list(request):
-    """Список всех мастеров"""
-
-    masters = MasterProfile.objects.all().select_related('user')
-
-    masters_data = []
-    masters_map_data = []
-
-    for master in masters:
-        try:
-            portfolio = master.portfolio_set.all()[:5]
-        except Exception:
-            portfolio = []
-
-        try:
-            services = master.services.filter(is_active=True)[:3]
-        except Exception:
-            services = []
-
-        try:
-            avg_price = master.services.filter(is_active=True).aggregate(
-                Avg('price')
-            )['price__avg'] or 0
-        except Exception:
-            avg_price = 0
-
-        try:
-            reviews = Review.objects.filter(
-                master=master,
-                is_approved=True,
-                is_blocked=False
-            )
-            rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
-            reviews_count = reviews.count()
-        except Exception:
-            rating = 0
-            reviews_count = 0
-
-        masters_data.append({
-            'id': master.id,
-            'display_name': master.display_name or "Мастер",
-            'address': master.address_text or "Адрес не указан",
-            'avatar': master.avatar,
-            'bio': master.bio,
-            'portfolio': portfolio,
-            'services': services,
-            'avg_price': avg_price,
-            'rating': rating,
-            'reviews_count': reviews_count,
-            'user': master.user,
-        })
-
-        # Главное для карты
-        if master.latitude is not None and master.longitude is not None:
-            masters_map_data.append({
-                'id': master.id,
-                'name': master.display_name or "Мастер",
-                'address': master.address_text or "Адрес не указан",
-                'lat': float(master.latitude),
-                'lng': float(master.longitude),
-                'price': round(avg_price) if avg_price else None,
-            })
-
-    print("=== DEBUG masters_map_data ===")
-    print(masters_map_data)
-    print("=== DEBUG api key ===")
-    print(settings.YANDEX_MAPS_API_KEY)
-
-    context = {
-        'masters': masters_data,
-        'masters_map_data': masters_map_data,
-        'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
-    }
-
-    return render(request, 'masters/masters_list.html', context)
-
-
-@login_required
 def master_responses(request):
     """Страница всех откликов мастера"""
     if request.user.role != 'master':
@@ -755,18 +691,12 @@ def master_clients(request):
 
 @login_required
 def master_portfolio(request):
-    """Страница портфолио мастера"""
     if request.user.role != 'master':
         messages.error(request, 'У вас нет доступа к этой странице')
         return redirect('home')
 
     master_profile = MasterProfile.objects.get(user=request.user)
-
-    # Получаем портфолио мастера
-    try:
-        portfolio_items = master_profile.portfolio.all()
-    except:
-        portfolio_items = []
+    portfolio_items = Portfolio.objects.filter(master=master_profile)
 
     context = {
         'portfolio_items': portfolio_items,
@@ -774,6 +704,50 @@ def master_portfolio(request):
     }
 
     return render(request, 'masters/portfolio.html', context)
+
+
+@login_required
+def add_portfolio_item(request):
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    if request.method == 'POST':
+        master_profile = MasterProfile.objects.get(user=request.user)
+
+        image = request.FILES.get('image')
+        description = request.POST.get('description', '').strip()
+
+        if not image:
+            messages.error(request, 'Выберите фотографию')
+            return redirect('master_portfolio')
+
+        Portfolio.objects.create(
+            master=master_profile,
+            image=image,
+            description=description
+        )
+
+        messages.success(request, 'Фото добавлено в портфолио')
+
+    return redirect('master_portfolio')
+
+
+@login_required
+def delete_portfolio_item(request, item_id):
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+    item = get_object_or_404(Portfolio, id=item_id, master=master_profile)
+
+    if request.method == 'POST':
+        item.image.delete(save=False)
+        item.delete()
+        messages.success(request, 'Фото удалено')
+
+    return redirect('master_portfolio')
 
 
 @login_required
@@ -849,3 +823,71 @@ def reschedule_booking(request, booking_id):
             messages.error(request, 'Укажите новую дату и время')
 
     return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+
+
+@login_required
+def save_master_services(request):
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    if request.method != 'POST':
+        return redirect('master_dashboard')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    service_ids = request.POST.getlist('service_id[]')
+    names = request.POST.getlist('service_name[]')
+    categories = request.POST.getlist('category_id[]')
+    durations = request.POST.getlist('duration_minutes[]')
+    prices = request.POST.getlist('price[]')
+    descriptions = request.POST.getlist('description[]')
+
+    saved_ids = []
+
+    for index, raw_name in enumerate(names):
+        name = raw_name.strip()
+
+        if not name:
+            continue
+
+        service_id = service_ids[index] if index < len(service_ids) else ''
+        category_id = categories[index] if index < len(categories) else ''
+        duration = durations[index] if index < len(durations) else '60'
+        price = prices[index] if index < len(prices) else ''
+        description = descriptions[index] if index < len(descriptions) else ''
+
+        if not category_id:
+            messages.error(request, f'Выберите категорию для услуги: {name}')
+            return redirect('master_dashboard')
+
+        if not price:
+            messages.error(request, f'Укажите стоимость для услуги: {name}')
+            return redirect('master_dashboard')
+
+        if service_id:
+            service = get_object_or_404(
+                Service, id=service_id, master=master_profile)
+        else:
+            service = Service(master=master_profile)
+
+        service.name = name
+        service.category_id = int(category_id)
+        service.duration_minutes = int(duration or 60)
+        service.price = price
+        service.description = description
+        service.is_active = True
+        service.save()
+
+        saved_ids.append(service.id)
+
+    if not saved_ids:
+        messages.error(request, 'Добавьте хотя бы одну услугу')
+        return redirect('master_dashboard')
+
+    Service.objects.filter(
+        master=master_profile
+    ).exclude(id__in=saved_ids).update(is_active=False)
+
+    messages.success(request, 'Услуги сохранены')
+    return redirect('master_dashboard')

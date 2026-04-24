@@ -72,12 +72,37 @@
                     </div>
 
                     {% if master.portfolio %}
-                    <div class="portfolio-preview">
-                        {% for item in master.portfolio|slice:":3" %}
-                            <div class="portfolio-thumb">
+                    <div class="master-portfolio-carousel" data-carousel="{{ master.id }}">
+                        <div class="master-portfolio-track">
+                            {% for item in master.portfolio %}
+                            <div class="master-portfolio-slide {% if forloop.first %}active{% endif %}">
                                 <img src="{{ item.image.url }}" alt="{{ master.display_name }}">
+                                {% if item.description %}
+                                <div class="master-portfolio-caption">
+                                    {{ item.description|truncatechars:70 }}
+                                </div>
+                                {% endif %}
                             </div>
-                        {% endfor %}
+                            {% endfor %}
+                        </div>
+
+                        {% if master.portfolio|length > 1 %}
+                        <button class="master-portfolio-btn prev" type="button" onclick="changeMasterPortfolioSlide({{ master.id }}, -1)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+
+                        <button class="master-portfolio-btn next" type="button" onclick="changeMasterPortfolioSlide({{ master.id }}, 1)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+
+                        <div class="master-portfolio-dots">
+                            {% for item in master.portfolio %}
+                            <button class="master-portfolio-dot {% if forloop.first %}active{% endif %}"
+                                    type="button"
+                                    onclick="setMasterPortfolioSlide({{ master.id }}, {{ forloop.counter0 }})"></button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% else %}
                     <div class="portfolio-empty">
@@ -350,27 +375,111 @@
     font-size: 13px;
 }
 
-.portfolio-preview {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+
+.master-portfolio-carousel {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--ui-soft);
+    border: 1px solid var(--ui-border);
     margin-bottom: 14px;
 }
 
-.portfolio-thumb {
-    aspect-ratio: 1 / 1;
-    border-radius: 14px;
-    overflow: hidden;
-    border: 1px solid var(--ui-border);
-    background: var(--ui-soft);
+.master-portfolio-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
 }
 
-.portfolio-thumb img {
+.master-portfolio-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .35s ease;
+}
+
+.master-portfolio-slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.master-portfolio-slide img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
+
+.master-portfolio-caption {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 20px;
+    padding: 9px 11px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.58);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.master-portfolio-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.9);
+    color: #202020;
+    cursor: pointer;
+    z-index: 3;
+}
+
+.master-portfolio-btn:hover {
+    background: #202020;
+    color: #fff;
+}
+
+.master-portfolio-btn.prev {
+    left: 10px;
+}
+
+.master-portfolio-btn.next {
+    right: 10px;
+}
+
+.master-portfolio-dots {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 7px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    z-index: 4;
+}
+
+.master-portfolio-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255,255,255,0.55);
+    cursor: pointer;
+}
+
+.master-portfolio-dot.active {
+    width: 20px;
+    background: #fff;
+}
+
+
+
 
 .portfolio-empty {
     display: flex;
@@ -679,5 +788,70 @@ function showMapEmptyState() {
         empty.style.display = 'block';
     }
 }
+
+
+
+const masterPortfolioState = {};
+
+function updateMasterPortfolioCarousel(masterId) {
+    const carousel = document.querySelector(`[data-carousel="${masterId}"]`);
+    if (!carousel) return;
+
+    const slides = carousel.querySelectorAll('.master-portfolio-slide');
+    const dots = carousel.querySelectorAll('.master-portfolio-dot');
+
+    if (!slides.length) return;
+
+    if (masterPortfolioState[masterId] === undefined) {
+        masterPortfolioState[masterId] = 0;
+    }
+
+    slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === masterPortfolioState[masterId]);
+    });
+
+    dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === masterPortfolioState[masterId]);
+    });
+}
+
+function changeMasterPortfolioSlide(masterId, direction) {
+    const carousel = document.querySelector(`[data-carousel="${masterId}"]`);
+    if (!carousel) return;
+
+    const slides = carousel.querySelectorAll('.master-portfolio-slide');
+    if (!slides.length) return;
+
+    if (masterPortfolioState[masterId] === undefined) {
+        masterPortfolioState[masterId] = 0;
+    }
+
+    masterPortfolioState[masterId] += direction;
+
+    if (masterPortfolioState[masterId] < 0) {
+        masterPortfolioState[masterId] = slides.length - 1;
+    }
+
+    if (masterPortfolioState[masterId] >= slides.length) {
+        masterPortfolioState[masterId] = 0;
+    }
+
+    updateMasterPortfolioCarousel(masterId);
+}
+
+function setMasterPortfolioSlide(masterId, index) {
+    masterPortfolioState[masterId] = index;
+    updateMasterPortfolioCarousel(masterId);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.master-portfolio-carousel').forEach(carousel => {
+        const masterId = carousel.dataset.carousel;
+        masterPortfolioState[masterId] = 0;
+        updateMasterPortfolioCarousel(masterId);
+    });
+});
+
+
 </script>
 {% endblock %}

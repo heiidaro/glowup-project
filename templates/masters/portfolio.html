@@ -4,124 +4,358 @@
 {% block title %}Портфолио{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Мое портфолио</h1>
-    <p>Все фотографии ваших работ</p>
-    <button class="btn-add" onclick="alert('Добавление фото в разработке')">
-        <i class="fas fa-plus"></i> Добавить фото
-    </button>
+<div class="portfolio-page">
+    <div class="portfolio-header">
+        <div>
+            <h1>Мое портфолио</h1>
+            <p>Добавляйте фотографии работ, чтобы клиенты могли оценить ваш стиль</p>
+        </div>
+
+        <button class="btn-add" onclick="openAddModal()">
+            <i class="fas fa-plus"></i>
+            Добавить фото
+        </button>
+    </div>
+
+    {% if portfolio_items %}
+        <div class="portfolio-masonry">
+            {% for item in portfolio_items %}
+            <div class="portfolio-card size-{{ forloop.counter|divisibleby:3|yesno:'large,normal' }}">
+                <img src="{{ item.image.url }}" alt="Фото портфолио">
+
+                <div class="portfolio-overlay">
+                    {% if item.description %}
+                        <p>{{ item.description }}</p>
+                    {% endif %}
+
+                    <form method="POST" action="{% url 'delete_portfolio_item' item.id %}"
+                          onsubmit="return confirm('Удалить это фото?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state-new">
+            <div class="empty-icon">
+                <i class="fas fa-camera"></i>
+            </div>
+            <h3>Портфолио пока пусто</h3>
+            <p>Добавьте первые фотографии своих работ.</p>
+            <button class="btn-add" onclick="openAddModal()">Добавить фото</button>
+        </div>
+    {% endif %}
 </div>
 
-{% if portfolio_items %}
-    <div class="portfolio-grid">
-        {% for item in portfolio_items %}
-        <div class="portfolio-item">
-            <img src="{{ item.image.url }}" alt="Фото портфолио">
-            <div class="portfolio-item-overlay">
-                <button class="btn-delete" onclick="alert('Удаление в разработке')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+<div id="addPortfolioModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Добавить фото</h2>
+            <button class="close-btn" onclick="closeAddModal()">&times;</button>
         </div>
-        {% endfor %}
+
+        <form method="POST" action="{% url 'add_portfolio_item' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label>Фотография</label>
+                <input type="file" name="image" accept="image/*" required>
+            </div>
+
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea name="description" rows="3" placeholder="Например: маникюр, наращивание, дизайн..."></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeAddModal()">Отмена</button>
+                <button type="submit" class="btn-primary">Добавить</button>
+            </div>
+        </form>
     </div>
-{% else %}
-    <div class="empty-state">
-        <i class="fas fa-camera"></i>
-        <p>Портфолио пока пусто</p>
-        <button class="btn-primary" onclick="alert('Добавление фото в разработке')">Добавить фото</button>
-    </div>
-{% endif %}
+</div>
 
 <style>
-.page-header {
+:root {
+    --ui-bg: #F7F7F5;
+    --ui-card: #FFFFFF;
+    --ui-border: #E5E7EB;
+    --ui-text: #202020;
+    --ui-muted: #6B7280;
+    --ui-soft: #F3F4F6;
+    --ui-dark: #202020;
+    --ui-danger: #DC2626;
+}
+
+.portfolio-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.portfolio-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
+    align-items: flex-start;
+    gap: 16px;
     flex-wrap: wrap;
-    gap: 15px;
 }
 
-.page-header h1 {
-    color: var(--dark);
-    font-size: 28px;
+.portfolio-header h1 {
+    font-size: 30px;
+    color: var(--ui-text);
+    margin-bottom: 8px;
 }
 
-.btn-add {
-    padding: 10px 20px;
-    background: var(--dark);
-    color: white;
+.portfolio-header p {
+    color: var(--ui-muted);
+    font-size: 15px;
+}
+
+.btn-add,
+.btn-primary,
+.btn-secondary {
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 12px;
     border: none;
-    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
 }
 
-.btn-add:hover {
-    background: var(--gray);
+.btn-add,
+.btn-primary {
+    background: var(--ui-dark);
+    color: white;
 }
 
-.portfolio-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
+.btn-add:hover,
+.btn-primary:hover {
+    background: #111111;
 }
 
-.portfolio-item {
+.btn-secondary {
+    background: #E5E7EB;
+    color: var(--ui-text);
+}
+
+.portfolio-masonry {
+    column-count: 4;
+    column-gap: 18px;
+}
+
+.portfolio-card {
     position: relative;
-    aspect-ratio: 1;
-    border-radius: 12px;
+    break-inside: avoid;
+    margin-bottom: 18px;
+    border-radius: 20px;
     overflow: hidden;
-    cursor: pointer;
+    background: var(--ui-soft);
+    border: 1px solid var(--ui-border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
-.portfolio-item img {
+.portfolio-card img {
     width: 100%;
-    height: 100%;
+    display: block;
     object-fit: cover;
-    transition: transform 0.3s;
 }
 
-.portfolio-item:hover img {
-    transform: scale(1.05);
+.portfolio-card.size-large img {
+    min-height: 360px;
 }
 
-.portfolio-item-overlay {
+.portfolio-card.size-normal img {
+    min-height: 240px;
+}
+
+.portfolio-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.72),
+        rgba(0,0,0,0.18),
+        transparent
+    );
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: .25s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px;
 }
 
-.portfolio-item:hover .portfolio-item-overlay {
+.portfolio-card:hover .portfolio-overlay {
     opacity: 1;
 }
 
-.btn-delete {
-    background: #dc3545;
+.portfolio-overlay p {
     color: white;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.btn-delete {
+    width: 42px;
+    height: 42px;
     border: none;
-    width: 40px;
-    height: 40px;
     border-radius: 50%;
+    background: var(--ui-danger);
+    color: white;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
 }
 
 .btn-delete:hover {
-    background: #c82333;
+    background: #B91C1C;
+}
+
+.empty-state-new {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+    padding: 60px 24px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+
+.empty-icon {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: var(--ui-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin-bottom: 18px;
+}
+
+.empty-state-new h3 {
+    font-size: 22px;
+    color: var(--ui-text);
+    margin-bottom: 10px;
+}
+
+.empty-state-new p {
+    color: var(--ui-muted);
+    margin-bottom: 20px;
+}
+
+/* modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    width: 90%;
+    max-width: 520px;
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--ui-border);
+    position: relative;
+}
+
+.modal-header h2 {
+    font-size: 20px;
+}
+
+.close-btn {
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    border: none;
+    background: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--ui-muted);
+}
+
+.form-group {
+    padding: 16px 20px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    font-family: inherit;
+}
+
+.modal-footer {
+    padding: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+@media (max-width: 1200px) {
+    .portfolio-masonry {
+        column-count: 3;
+    }
+}
+
+@media (max-width: 800px) {
+    .portfolio-masonry {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 520px) {
+    .portfolio-masonry {
+        column-count: 1;
+    }
 }
 </style>
+
+<script>
+function openAddModal() {
+    document.getElementById('addPortfolioModal').style.display = 'flex';
+}
+
+function closeAddModal() {
+    document.getElementById('addPortfolioModal').style.display = 'none';
+}
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('addPortfolioModal');
+
+    if (e.target === modal) {
+        closeAddModal();
+    }
+});
+</script>
 {% endblock %}

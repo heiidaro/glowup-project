@@ -144,33 +144,55 @@
 <div class="dashboard-grid">
     <!-- Левая колонка - Портфолио -->
     <div class="dashboard-card portfolio-card">
-        <div class="card-header">
-            <h3>Портфолио</h3>
-            <a href="{% url 'master_portfolio' %}" class="view-all" onclick="openPortfolioModal(); return false;">Все</a>
-        </div>
-        <div class="card-content">
-            {% if portfolio_items %}
-                <div class="portfolio-grid">
-                    {% for item in portfolio_items|slice:":4" %}
-                    <div class="portfolio-item">
+    <div class="card-header">
+        <h3>Портфолио</h3>
+        <a href="{% url 'master_portfolio' %}" class="view-all">Все</a>
+    </div>
+
+    <div class="card-content">
+        {% if portfolio_items %}
+            <div class="dashboard-portfolio-carousel" id="dashboardPortfolioCarousel">
+                <div class="dashboard-portfolio-track">
+                    {% for item in portfolio_items %}
+                    <div class="dashboard-portfolio-slide {% if forloop.first %}active{% endif %}">
                         <img src="{{ item.image.url }}" alt="Фото портфолио">
+
+                        {% if item.description %}
+                        <div class="dashboard-portfolio-caption">
+                            {{ item.description|truncatechars:80 }}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
-                {% if portfolio_items|length > 4 %}
-                <div class="portfolio-more">
-                    <span>+ еще {{ portfolio_items|length|add:"-4" }} фото</span>
+
+                {% if portfolio_items|length > 1 %}
+                <button class="portfolio-carousel-btn prev" type="button" onclick="changeDashboardPortfolioSlide(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+
+                <button class="portfolio-carousel-btn next" type="button" onclick="changeDashboardPortfolioSlide(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+
+                <div class="portfolio-carousel-dots">
+                    {% for item in portfolio_items %}
+                    <button class="portfolio-dot {% if forloop.first %}active{% endif %}"
+                            type="button"
+                            onclick="setDashboardPortfolioSlide({{ forloop.counter0 }})"></button>
+                    {% endfor %}
                 </div>
                 {% endif %}
-            {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-camera"></i>
-                    <p>Портфолио пока пусто</p>
-                    <button class="btn-add-portfolio" onclick="openPortfolioModal()">Добавить фото</button>
-                </div>
-            {% endif %}
-        </div>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-camera"></i>
+                <p>Портфолио пока пусто</p>
+                <button class="btn-add-portfolio" onclick="openPortfolioModal()">Добавить фото</button>
+            </div>
+        {% endif %}
     </div>
+</div>
 
     <!-- Правая колонка - Отзывы -->
     <div class="dashboard-card reviews-card">
@@ -224,6 +246,135 @@
             {% endif %}
         </div>
     </div>
+
+    <div class="dashboard-card full-width services-card">
+    <div class="card-header">
+        <h3>Мои услуги</h3>
+        <span class="view-all">Название, категория, длительность и стоимость</span>
+    </div>
+
+    <div class="card-content">
+        <form method="POST" action="{% url 'save_master_services' %}" id="servicesForm">
+            {% csrf_token %}
+
+            <div id="servicesRows" class="services-rows">
+                {% for service in master_services %}
+                <div class="service-row">
+                    <input type="hidden" name="service_id[]" value="{{ service.id }}">
+                    <input type="hidden" name="category_id[]" class="service-category-input" value="{{ service.category_id|default:'' }}">
+
+                    <div class="service-row-top">
+                        <div class="service-number">{{ forloop.counter }}</div>
+                        <button type="button" class="service-remove-btn" onclick="removeServiceRow(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="service-fields">
+                        <div class="service-field service-name-field">
+                            <label>Название услуги</label>
+                            <input type="text" name="service_name[]" value="{{ service.name }}" placeholder="Например: Маникюр" required>
+                        </div>
+
+                        <div class="service-field">
+                            <label>Длительность, мин</label>
+                            <input type="number" name="duration_minutes[]" value="{{ service.duration_minutes }}" min="10" step="5" required>
+                        </div>
+
+                        <div class="service-field">
+                            <label>Стоимость, ₽</label>
+                            <input type="number" name="price[]" value="{{ service.price|floatformat:0 }}" min="0" step="50" required>
+                        </div>
+                    </div>
+
+                    <div class="service-field">
+                      <label>Категория</label>
+                      <div class="service-tags">
+                          {% for category in service_categories %}
+                          <button type="button"
+                                  class="service-tag-choice {% if service.category_id == category.id %}active{% endif %}"
+                                  data-category-id="{{ category.id }}"
+                                  onclick="selectServiceCategory(this)">
+                              #{{ category.name }}
+                          </button>
+                          {% endfor %}
+                      </div>
+                  </div>  
+
+
+
+                    <div class="service-field">
+                        <label>Описание</label>
+                        <textarea name="description[]" rows="2" placeholder="Кратко опишите услугу">{{ service.description|default:'' }}</textarea>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="service-row">
+                    <input type="hidden" name="service_id[]" value="">
+                    <input type="hidden" name="category_id[]" class="service-category-input" value="">
+
+
+                    <div class="service-row-top">
+                        <div class="service-number">1</div>
+                        <button type="button" class="service-remove-btn" onclick="removeServiceRow(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="service-fields">
+                        <div class="service-field service-name-field">
+                            <label>Название услуги</label>
+                            <input type="text" name="service_name[]" placeholder="Например: Маникюр" required>
+                        </div>
+
+                        <div class="service-field">
+                            <label>Длительность, мин</label>
+                            <input type="number" name="duration_minutes[]" value="60" min="10" step="5" required>
+                        </div>
+
+                        <div class="service-field">
+                            <label>Стоимость, ₽</label>
+                            <input type="number" name="price[]" placeholder="1500" min="0" step="50" required>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="category_id[]" class="service-category-input" value="{{ service.category_id|default:'' }}">
+                    <div class="service-field">
+                      <label>Категория</label>
+                      <div class="service-tags">
+                          {% for category in service_categories %}
+                          <button type="button"
+                                  class="service-tag-choice {% if service.category_id == category.id %}active{% endif %}"
+                                  data-category-id="{{ category.id }}"
+                                  onclick="selectServiceCategory(this)">
+                              #{{ category.name }}
+                          </button>
+                          {% endfor %}
+                      </div>
+                  </div>
+
+                    <div class="service-field">
+                        <label>Описание</label>
+                        <textarea name="description[]" rows="2" placeholder="Кратко опишите услугу"></textarea>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="services-actions">
+                <button type="button" class="service-add-row-btn" onclick="addServiceRow()">
+                    <i class="fas fa-plus"></i>
+                </button>
+
+                <button type="submit" class="services-save-btn">
+                    Сохранить услуги
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
 </div>
 
 {% if show_profile_modal %}
@@ -1258,6 +1409,285 @@ body.modal-open {
     font-size: 13px;
     color: #6B7280;
 }
+
+
+.dashboard-portfolio-carousel {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #F3F4F6;
+}
+
+.dashboard-portfolio-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.dashboard-portfolio-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .35s ease;
+}
+
+.dashboard-portfolio-slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.dashboard-portfolio-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.dashboard-portfolio-caption {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 25px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.58);
+    color: white;
+    font-size: 13px;
+    line-height: 1.35;
+    backdrop-filter: blur(8px);
+}
+
+.portfolio-carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.9);
+    color: #202020;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: .2s ease;
+    z-index: 2;
+}
+
+.portfolio-carousel-btn:hover {
+    background: #202020;
+    color: white;
+}
+
+.portfolio-carousel-btn.prev {
+    left: 12px;
+}
+
+.portfolio-carousel-btn.next {
+    right: 12px;
+}
+
+.portfolio-carousel-dots {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    z-index: 3;
+}
+
+.dashboard-portfolio-caption + .portfolio-carousel-dots {
+    bottom: 60px;
+}
+
+.portfolio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255,255,255,0.55);
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.portfolio-dot.active {
+    width: 22px;
+    background: white;
+}
+
+@media (max-width: 900px) {
+    .dashboard-portfolio-carousel {
+        height: 260px;
+    }
+}
+
+
+.services-card {
+    margin-bottom: 24px;
+}
+
+.services-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.service-row {
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.service-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.service-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #202020;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.service-remove-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: #FEE2E2;
+    color: #991B1B;
+    cursor: pointer;
+}
+
+.service-fields {
+    display: grid;
+    grid-template-columns: 1.5fr 160px 160px;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.service-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.service-field label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #202020;
+}
+
+.service-field input,
+.service-field textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.service-field input:focus,
+.service-field textarea:focus {
+    outline: none;
+    border-color: #202020;
+}
+
+.service-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.service-tag-choice {
+    border: 1px solid #E5E7EB;
+    background: #fff;
+    color: #3B82F6;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.service-tag-choice:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, .15);
+}
+
+.service-tag-choice.active {
+    background: #3B82F6;
+    color: #fff;
+    border-color: #3B82F6;
+}
+
+.services-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-top: 22px;
+}
+
+.service-add-row-btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: none;
+    background: #202020;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.services-save-btn {
+    min-height: 48px;
+    padding: 12px 22px;
+    border: none;
+    border-radius: 14px;
+    background: #202020;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.services-save-btn:hover,
+.service-add-row-btn:hover {
+    background: #111;
+}
+
+@media (max-width: 900px) {
+    .service-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .services-actions {
+        flex-direction: column;
+    }
+
+    .services-save-btn {
+        width: 100%;
+    }
+}
 </style>
 
 <script>
@@ -1572,5 +2002,159 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+
+
+let dashboardPortfolioIndex = 0;
+
+function updateDashboardPortfolioCarousel() {
+    const slides = document.querySelectorAll('.dashboard-portfolio-slide');
+    const dots = document.querySelectorAll('.portfolio-dot');
+
+    if (!slides.length) return;
+
+    slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === dashboardPortfolioIndex);
+    });
+
+    dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === dashboardPortfolioIndex);
+    });
+}
+
+function changeDashboardPortfolioSlide(direction) {
+    const slides = document.querySelectorAll('.dashboard-portfolio-slide');
+    if (!slides.length) return;
+
+    dashboardPortfolioIndex += direction;
+
+    if (dashboardPortfolioIndex < 0) {
+        dashboardPortfolioIndex = slides.length - 1;
+    }
+
+    if (dashboardPortfolioIndex >= slides.length) {
+        dashboardPortfolioIndex = 0;
+    }
+
+    updateDashboardPortfolioCarousel();
+}
+
+function setDashboardPortfolioSlide(index) {
+    dashboardPortfolioIndex = index;
+    updateDashboardPortfolioCarousel();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    updateDashboardPortfolioCarousel();
+
+    const carousel = document.getElementById('dashboardPortfolioCarousel');
+    if (!carousel) return;
+
+    setInterval(function () {
+        const slides = document.querySelectorAll('.dashboard-portfolio-slide');
+        if (slides.length > 1) {
+            changeDashboardPortfolioSlide(1);
+        }
+    }, 5000);
+});
+
+
+function updateServiceNumbers() {
+    document.querySelectorAll('.service-row').forEach((row, index) => {
+        const number = row.querySelector('.service-number');
+        if (number) {
+            number.textContent = index + 1;
+        }
+    });
+}
+
+function selectServiceCategory(button) {
+    const row = button.closest('.service-row');
+    const input = row.querySelector('.service-category-input');
+
+    row.querySelectorAll('.service-tag-choice').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    button.classList.add('active');
+    input.value = button.dataset.categoryId;
+}
+
+function addServiceRow() {
+    const container = document.getElementById('servicesRows');
+    const firstRow = container.querySelector('.service-row');
+
+    if (!firstRow) return;
+
+    const clone = firstRow.cloneNode(true);
+
+    clone.querySelectorAll('input, textarea').forEach(input => {
+        if (input.name === 'duration_minutes[]') {
+            input.value = 60;
+        } else {
+            input.value = '';
+        }
+    });
+
+    clone.querySelectorAll('.service-tag-choice').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    container.appendChild(clone);
+    updateServiceNumbers();
+}
+
+function removeServiceRow(button) {
+    const container = document.getElementById('servicesRows');
+    const rows = container.querySelectorAll('.service-row');
+
+    if (rows.length <= 1) {
+        const row = rows[0];
+
+        row.querySelectorAll('input, textarea').forEach(input => {
+            if (input.name === 'duration_minutes[]') {
+                input.value = 60;
+            } else {
+                input.value = '';
+            }
+        });
+
+        row.querySelectorAll('.service-tag-choice').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        return;
+    }
+
+    button.closest('.service-row').remove();
+    updateServiceNumbers();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    updateServiceNumbers();
+
+    const servicesForm = document.getElementById('servicesForm');
+
+    if (servicesForm) {
+        servicesForm.addEventListener('submit', function (e) {
+            const rows = document.querySelectorAll('.service-row');
+
+            for (const row of rows) {
+                const name = row.querySelector('input[name="service_name[]"]').value.trim();
+                const categoryInput = row.querySelector('input[name="category_id[]"]');
+                const category = categoryInput ? categoryInput.value : '';
+                const price = row.querySelector('input[name="price[]"]').value;
+
+                if (name && (!category || !price)) {
+                    e.preventDefault();
+                    alert('У каждой заполненной услуги должна быть категория и стоимость');
+                    return;
+                }
+            }
+        });
+    }
+});
+
+
 </script>
 {% endblock %}
