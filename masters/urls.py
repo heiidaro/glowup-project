@@ -25,4 +25,8 @@ urlpatterns = [
     path('update-profile/', views.update_profile, name='master_update_profile'),
     path('services/save/', views.save_master_services,
          name='save_master_services'),
+    path('profile/<int:master_id>/', views.master_public_profile,
+         name='master_public_profile'),
+    path('profile/<int:master_id>/review/',
+         views.add_master_review, name='add_master_review'),
 ]

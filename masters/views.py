@@ -891,3 +891,80 @@ def save_master_services(request):
 
     messages.success(request, 'Услуги сохранены')
     return redirect('master_dashboard')
+
+
+@login_required
+def master_public_profile(request, master_id):
+    master = get_object_or_404(MasterProfile, id=master_id)
+
+    services = Service.objects.filter(
+        master=master,
+        is_active=True
+    ).select_related('category').order_by('price')
+
+    portfolio_items = Portfolio.objects.filter(
+        master=master).order_by('-created_at')
+
+    reviews = Review.objects.filter(
+        master=master,
+        is_approved=True,
+        is_blocked=False
+    ).select_related('client').order_by('-created_at')
+
+    avg_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+    reviews_count = reviews.count()
+
+    avg_price = services.aggregate(Avg('price'))['price__avg'] or 0
+
+    categories = []
+    category_ids = set()
+
+    for service in services:
+        if service.category and service.category_id not in category_ids:
+            categories.append(service.category)
+            category_ids.add(service.category_id)
+
+    context = {
+        'master': master,
+        'services': services,
+        'portfolio_items': portfolio_items,
+        'reviews': reviews,
+        'avg_rating': avg_rating,
+        'reviews_count': reviews_count,
+        'avg_price': avg_price,
+        'categories': categories,
+    }
+
+    return render(request, 'masters/public_profile.html', context)
+
+
+@login_required
+def add_master_review(request, master_id):
+    if request.user.role != 'client':
+        messages.error(request, 'Оставлять отзывы могут только клиенты')
+        return redirect('master_public_profile', master_id=master_id)
+
+    master = get_object_or_404(MasterProfile, id=master_id)
+
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment', '').strip()
+
+        if not rating or not comment:
+            messages.error(request, 'Укажите оценку и текст отзыва')
+            return redirect('master_public_profile', master_id=master.id)
+
+        client_profile = request.user.client_profile
+
+        Review.objects.create(
+            master=master,
+            client=client_profile,
+            rating=int(rating),
+            comment=comment,
+            is_approved=True,
+            is_blocked=False
+        )
+
+        messages.success(request, 'Отзыв добавлен')
+
+    return redirect('master_public_profile', master_id=master.id)
