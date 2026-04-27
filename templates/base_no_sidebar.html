@@ -45,6 +45,15 @@
                           <span>Записи</span>
                       </a>
                   </li>
+
+                  {% if user.role == 'master' %}
+                  <li class="{% if request.resolver_match.url_name == 'master_schedule' %}active{% endif %}">
+                      <a href="{% url 'master_schedule' %}">
+                          <i class="fas fa-calendar-alt"></i>
+                          <span>Расписание</span>
+                      </a>
+                  </li>
+                  {% endif %}
                     
                     {% if user.role == 'client' %}
                     <li>

@@ -73,7 +73,7 @@
         <div id="active-tab" class="tab-content active">
             {% if active_bookings %}
                 {% for booking in active_bookings %}
-                <div class="booking-card">
+                <div class="booking-card" id="booking-{{ booking.id }}">
                     <div class="booking-card-header">
                         <h3>{{ booking.client.full_name|default:"Клиент" }}</h3>
                         <span class="booking-time-until">{{ booking.time_until }}</span>

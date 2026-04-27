@@ -38,4 +38,10 @@ urlpatterns = [
          views.book_master, name='book_master'),
     path('profile/<int:master_id>/book/create/',
          views.create_master_booking, name='create_master_booking'),
+    path('schedule/ajax/create/', views.ajax_create_schedule_slot,
+         name='ajax_create_schedule_slot'),
+    path('schedule/ajax/delete/<int:slot_id>/',
+         views.ajax_delete_schedule_slot, name='ajax_delete_schedule_slot'),
+    path('schedule/ajax/copy/<int:slot_id>/',
+         views.ajax_copy_schedule_slot, name='ajax_copy_schedule_slot'),
 ]

@@ -17,6 +17,8 @@ import requests
 from django.conf import settings
 from .models import MasterProfile, Portfolio, Service, ServiceCategory, MasterScheduleSlot
 from django.db.models import Q
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 
 def geocode_yandex_address(address: str):
@@ -1079,25 +1081,150 @@ def master_schedule(request):
     else:
         selected_date_obj = timezone.now().date()
 
+    week_start = selected_date_obj - \
+        timedelta(days=selected_date_obj.weekday())
+    week_day_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+    week_days = []
+    for i in range(7):
+        day_date = week_start + timedelta(days=i)
+        week_days.append({
+            'date': day_date,
+            'name': week_day_names[i],
+        })
+
+    week_end = week_start + timedelta(days=6)
+
+    prev_week = week_start - timedelta(days=7)
+    next_week = week_start + timedelta(days=7)
+
     slots = MasterScheduleSlot.objects.filter(
         master=master_profile,
-        date=selected_date_obj
-    ).order_by('start_time')
+        date__range=[week_start, week_end]
+    ).order_by('date', 'start_time')
 
     bookings = Booking.objects.filter(
         master=master_profile,
-        date=selected_date_obj,
+        date__range=[week_start, week_end],
         status='active'
-    ).select_related('client').order_by('time')
+    ).select_related('client').order_by('date', 'time')
 
     context = {
         'master': master_profile,
         'selected_date': selected_date_obj,
+        'week_start': week_start,
+        'week_end': week_end,
+        'week_days': week_days,
         'slots': slots,
         'bookings': bookings,
+        'prev_week': prev_week,
+        'next_week': next_week,
     }
 
     return render(request, 'masters/schedule.html', context)
+
+
+@login_required
+@require_POST
+def ajax_delete_schedule_slot(request, slot_id):
+    if request.user.role != 'master':
+        return JsonResponse({'success': False, 'error': 'Нет доступа'}, status=403)
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    slot = get_object_or_404(
+        MasterScheduleSlot,
+        id=slot_id,
+        master=master_profile
+    )
+
+    slot.delete()
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def ajax_copy_schedule_slot(request, slot_id):
+    if request.user.role != 'master':
+        return JsonResponse({'success': False, 'error': 'Нет доступа'}, status=403)
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    slot = get_object_or_404(
+        MasterScheduleSlot,
+        id=slot_id,
+        master=master_profile
+    )
+
+    dates = request.POST.getlist('dates[]')
+    created = []
+
+    for raw_date in dates:
+        try:
+            target_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            continue
+
+        new_slot = MasterScheduleSlot.objects.create(
+            master=master_profile,
+            date=target_date,
+            start_time=slot.start_time,
+            end_time=slot.end_time,
+            is_available=True
+        )
+
+        created.append({
+            'id': new_slot.id,
+            'date': str(new_slot.date),
+            'start_time': new_slot.start_time.strftime('%H:%M'),
+            'end_time': new_slot.end_time.strftime('%H:%M'),
+        })
+
+    return JsonResponse({
+        'success': True,
+        'created': created
+    })
+
+
+@login_required
+@require_POST
+def ajax_create_schedule_slot(request):
+    if request.user.role != 'master':
+        return JsonResponse({'success': False, 'error': 'Нет доступа'}, status=403)
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    slot_date = request.POST.get('date')
+    start_time_raw = request.POST.get('start_time')
+    end_time_raw = request.POST.get('end_time')
+
+    if not slot_date or not start_time_raw or not end_time_raw:
+        return JsonResponse({'success': False, 'error': 'Не заполнены данные'}, status=400)
+
+    start_time_obj = datetime.strptime(start_time_raw, '%H:%M').time()
+    end_time_obj = datetime.strptime(end_time_raw, '%H:%M').time()
+
+    if end_time_obj <= start_time_obj:
+        return JsonResponse({'success': False, 'error': 'Конец интервала должен быть позже начала'}, status=400)
+
+    slot = MasterScheduleSlot.objects.create(
+        master=master_profile,
+        date=slot_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+        is_available=True
+    )
+
+    return JsonResponse({
+        'success': True,
+        'slot': {
+            'id': slot.id,
+            'date': str(slot.date),
+            'start_time': start_time_obj.strftime('%H:%M'),
+            'end_time': end_time_obj.strftime('%H:%M'),
+        }
+    })
 
 
 @login_required

@@ -5,83 +5,124 @@
 
 {% block content %}
 <div class="schedule-page">
-    <div class="page-header schedule-header">
+    <div class="schedule-header">
         <div>
             <h1>Расписание</h1>
-            <p>Добавляйте свободные интервалы, чтобы клиенты могли записываться автоматически</p>
+            <p>Выделяйте свободные интервалы мышью. Клиенты будут видеть только доступное время.</p>
+        </div>
+
+        <div class="week-nav">
+          <a href="?date={{ prev_week|date:'Y-m-d' }}">← Предыдущая</a>
+          <span>{{ week_start|date:"d.m" }} — {{ week_end|date:"d.m.Y" }}</span>
+          <a href="?date={{ next_week|date:'Y-m-d' }}">Следующая →</a>
         </div>
     </div>
 
-    <div class="schedule-layout">
-        <div class="schedule-card">
-            <h3>Добавить свободный интервал</h3>
-
-            <form method="POST" action="{% url 'add_schedule_slot' %}" class="slot-form">
-                {% csrf_token %}
-
-                <label>
-                    Дата
-                    <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" required>
-                </label>
-
-                <label>
-                    Начало
-                    <input type="time" name="start_time" required>
-                </label>
-
-                <label>
-                    Конец
-                    <input type="time" name="end_time" required>
-                </label>
-
-                <button type="submit">Добавить</button>
-            </form>
+    <div class="calendar-shell">
+        <div class="calendar-head">
+            <div class="time-head"></div>
+            {% for day in week_days %}
+            <div class="day-head" data-date="{{ day.date|date:'Y-m-d' }}">
+                <strong>{{ day.name }}</strong>
+                <span>{{ day.date|date:"d.m" }}</span>
+            </div>
+            {% endfor %}
         </div>
 
-        <div class="schedule-card">
-            <h3>Интервалы на {{ selected_date|date:"d.m.Y" }}</h3>
+        <div class="calendar-body" id="scheduleGrid">
+            <div class="time-column">
+              <div class="time-label" style="top: 0px;">08:00</div>
+              <div class="time-label" style="top: 72px;">09:00</div>
+              <div class="time-label" style="top: 144px;">10:00</div>
+              <div class="time-label" style="top: 216px;">11:00</div>
+              <div class="time-label" style="top: 288px;">12:00</div>
+              <div class="time-label" style="top: 360px;">13:00</div>
+              <div class="time-label" style="top: 432px;">14:00</div>
+              <div class="time-label" style="top: 504px;">15:00</div>
+              <div class="time-label" style="top: 576px;">16:00</div>
+              <div class="time-label" style="top: 648px;">17:00</div>
+              <div class="time-label" style="top: 720px;">18:00</div>
+              <div class="time-label" style="top: 792px;">19:00</div>
+              <div class="time-label" style="top: 864px;">20:00</div>
+              <div class="time-label" style="top: 936px;">21:00</div>
+              <div class="time-label" style="top: 1008px;">22:00</div>
+              <div class="time-label" style="top: 1080px;">23:00</div>
+              <div class="time-label" style="top: 1152px;">24:00</div>
+            </div>
 
-            <form method="GET" class="date-filter">
-                <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}">
-                <button type="submit">Показать</button>
-            </form>
+            <div class="days-grid">
+                {% for day in week_days %}
+                <div class="day-column" data-date="{{ day.date|date:'Y-m-d' }}">
+                    {% for i in "1234567890123456"|make_list %}
+                    <div class="hour-line"></div>
+                    {% endfor %}
 
-            <div class="slots-list">
-                {% for slot in slots %}
-                <div class="slot-item">
-                    <div>
-                        <strong>{{ slot.start_time|time:"H:i" }} — {{ slot.end_time|time:"H:i" }}</strong>
-                        <span>Свободный интервал</span>
-                    </div>
+                    {% for slot in slots %}
+                        {% if slot.date == day.date %}
+                        <div class="slot-block saved-slot"
+                             data-slot-id="{{ slot.id }}"
+                             data-date="{{ slot.date|date:'Y-m-d' }}"
+                             data-start="{{ slot.start_time|time:'H:i' }}"
+                             data-end="{{ slot.end_time|time:'H:i' }}">
+                            <strong>{{ slot.start_time|time:"H:i" }} — {{ slot.end_time|time:"H:i" }}</strong>
+                            <span>Свободно</span>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
 
-                    <form method="POST" action="{% url 'delete_schedule_slot' slot.id %}">
-                        {% csrf_token %}
-                        <button type="submit">Удалить</button>
-                    </form>
+                    {% for booking in bookings %}
+                        {% if booking.date == day.date %}
+                        <a class="slot-block booking-slot"
+                          href="{% url 'master_bookings' %}?date={{ booking.date|date:'Y-m-d' }}#booking-{{ booking.id }}"
+                          data-start="{{ booking.time|time:'H:i' }}"
+                          data-end="{% if booking.end_time %}{{ booking.end_time|time:'H:i' }}{% else %}{{ booking.time|time:'H:i' }}{% endif %}">
+                            <strong>
+                                {{ booking.time|time:"H:i" }}
+                                {% if booking.end_time %} — {{ booking.end_time|time:"H:i" }}{% endif %}
+                            </strong>
+                            <span>{{ booking.service }}</span>
+                            <small>{{ booking.client.full_name|default:"Клиент" }}</small>
+                        </a>
+                        {% endif %}
+                    {% endfor %}
                 </div>
-                {% empty %}
-                <p class="empty-text">На эту дату свободные интервалы не добавлены</p>
                 {% endfor %}
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="schedule-card full-width">
-            <h3>Записи на выбранный день</h3>
+<div id="slotActionPanel" class="slot-panel">
+    <div>
+        <strong id="panelTime">10:00 — 11:00</strong>
+        <span id="panelDate">Дата</span>
+    </div>
 
-            <div class="bookings-list">
-                {% for booking in bookings %}
-                <div class="booking-row">
-                    <div>
-                        <strong>{{ booking.time|time:"H:i" }}{% if booking.end_time %} — {{ booking.end_time|time:"H:i" }}{% endif %}</strong>
-                        <span>{{ booking.service }}</span>
-                    </div>
-                    <div>{{ booking.client.full_name|default:"Клиент" }}</div>
-                    <div>{{ booking.price }} ₽</div>
-                </div>
-                {% empty %}
-                <p class="empty-text">Записей на эту дату пока нет</p>
-                {% endfor %}
-            </div>
+    <div class="panel-actions">
+        <button type="button" id="saveDraftSlotBtn">Сохранить</button>
+        <button type="button" id="copySlotBtn" style="display:none;">Скопировать слот</button>
+        <button type="button" id="deleteSlotBtn" style="display:none;">Удалить</button>
+        <button type="button" id="closePanelBtn">Закрыть</button>
+    </div>
+</div>
+
+<div id="copyModal" class="copy-modal">
+    <div class="copy-content">
+        <h3>Скопировать слот</h3>
+        <p>Выберите даты, на которые нужно поставить такой же интервал.</p>
+
+        <div class="copy-dates">
+            {% for day in week_days %}
+            <label>
+                <input type="checkbox" value="{{ day|date:'Y-m-d' }}">
+                <span>{{ day|date:"d.m" }}</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="copy-actions">
+            <button type="button" id="confirmCopyBtn">Скопировать</button>
+            <button type="button" id="closeCopyBtn">Отмена</button>
         </div>
     </div>
 </div>
@@ -90,7 +131,14 @@
 .schedule-page {
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 20px;
+}
+
+.schedule-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
 }
 
 .schedule-header h1 {
@@ -105,109 +153,601 @@
     font-size: 14px;
 }
 
-.schedule-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
+.week-nav {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
-.schedule-card {
+.week-nav a,
+.week-nav span {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    color: #202020;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.calendar-shell {
     background: #fff;
     border: 1px solid #E5E7EB;
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 12px 34px rgba(0,0,0,.05);
 }
 
-.schedule-card.full-width {
-    grid-column: 1 / -1;
-}
-
-.schedule-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 16px;
-}
-
-.slot-form,
-.date-filter {
+.calendar-head {
     display: grid;
-    gap: 12px;
+    grid-template-columns: 72px repeat(7, 1fr);
+    border-bottom: 1px solid #E5E7EB;
+    background: #fff;
 }
 
-.slot-form label {
+.time-head,
+.day-head {
+    min-height: 64px;
+    border-right: 1px solid #E5E7EB;
+}
+
+.day-head {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    font-size: 13px;
-    color: #6B7280;
-}
-
-.slot-form input,
-.date-filter input {
-    height: 42px;
-    border: 1px solid #E5E7EB;
-    border-radius: 12px;
+    justify-content: center;
+    gap: 4px;
     padding: 0 12px;
 }
 
-.slot-form button,
-.date-filter button,
-.slot-item button {
-    height: 42px;
-    border: none;
-    border-radius: 12px;
-    background: #202020;
-    color: white;
+.day-head strong {
+    font-size: 14px;
+    color: #202020;
     font-weight: 600;
-    cursor: pointer;
 }
 
-.slots-list,
-.bookings-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.day-head span {
+    color: #6B7280;
+    font-size: 12px;
 }
 
-.slot-item,
-.booking-row {
+.calendar-body {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 12px;
-    align-items: center;
-    padding: 14px;
-    background: #F7F7F5;
+    grid-template-columns: 72px 1fr;
+    max-height: 760px;
+    overflow: auto;
+    padding-top: 8px;
+}
+
+.time-column {
+    position: relative;
+    height: 1152px;
+    border-right: 1px solid #E5E7EB;
+    background: #FAFAFA;
+}
+
+.time-label {
+    position: absolute;
+    right: 12px;
+    transform: translateY(-2px);
+    color: #6B7280;
+    font-size: 12px;
+}
+
+.days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(120px, 1fr));
+    height: 1152px;
+}
+
+.day-column {
+    position: relative;
+    border-right: 1px solid #E5E7EB;
+    height: 1152px;
+    background: #fff;
+    user-select: none;
+}
+
+.day-column:hover {
+    background: #FCFCFC;
+}
+
+.hour-line {
+    height: 72px;
+    border-bottom: 1px solid #F0F1F3;
+}
+
+.slot-block {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    border-radius: 12px;
+    padding: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 5;
+    overflow: hidden;
+    transition: .2s ease;
+}
+
+.slot-block strong {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.slot-block span {
+    font-size: 11px;
+}
+
+.saved-slot {
+    background: #DCFCE7;
+    border: 1px solid #86EFAC;
+    color: #166534;
+}
+
+.saved-slot:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(22,101,52,.14);
+}
+
+.booking-slot {
+    background: #DBEAFE;
+    border: 1px solid #93C5FD;
+    color: #1E40AF;
+    cursor: default;
+}
+
+.draft-slot {
+    background: #FEF3C7;
+    border: 1px dashed #F59E0B;
+    color: #92400E;
+    z-index: 10;
+}
+
+.slot-panel {
+    position: fixed;
+    width: 320px;
+    background: #fff;
     border: 1px solid #E5E7EB;
-    border-radius: 14px;
+    border-radius: 18px;
+    box-shadow: 0 18px 44px rgba(0,0,0,.14);
+    padding: 16px;
+    display: none;
+    z-index: 1000;
 }
 
-.booking-row {
-    grid-template-columns: 1fr 180px 100px;
+.slot-panel.active {
+    display: block;
 }
 
-.slot-item strong,
-.booking-row strong {
+.slot-panel strong {
     display: block;
     color: #202020;
     margin-bottom: 4px;
 }
 
-.slot-item span,
-.booking-row span,
-.empty-text {
+.slot-panel span {
     color: #6B7280;
     font-size: 13px;
 }
 
+.panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.panel-actions button,
+.copy-actions button {
+    min-height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 10px;
+    background: #202020;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.panel-actions button:last-child,
+.copy-actions button:last-child {
+    background: #F3F4F6;
+    color: #202020;
+}
+
+.copy-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+}
+
+.copy-modal.active {
+    display: flex;
+}
+
+.copy-content {
+    width: 420px;
+    max-width: calc(100vw - 32px);
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.copy-content h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+}
+
+.copy-content p {
+    color: #6B7280;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.copy-dates {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.copy-dates label {
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.copy-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 18px;
+}
+
 @media (max-width: 900px) {
-    .schedule-layout {
-        grid-template-columns: 1fr;
+    .calendar-head {
+        grid-template-columns: 60px repeat(7, 140px);
     }
 
-    .booking-row {
-        grid-template-columns: 1fr;
+    .calendar-body {
+        grid-template-columns: 60px 980px;
+    }
+
+    .days-grid {
+        grid-template-columns: repeat(7, 140px);
+    }
+
+    .slot-panel {
+        left: 16px;
+        right: 16px;
+        width: auto;
     }
 }
+
+.booking-slot {
+    text-decoration: none;
+}
+
+.booking-slot small {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #1E40AF;
+    opacity: .85;
+}
 </style>
+
+<script>
+const START_HOUR = 8;
+const END_HOUR = 24;
+const PX_PER_HOUR = 72;
+const PX_PER_MIN = PX_PER_HOUR / 60;
+const STEP_MIN = 30;
+
+let isDragging = false;
+let dragColumn = null;
+let dragStartY = 0;
+let draftSlot = null;
+let selectedSlot = null;
+
+const panel = document.getElementById('slotActionPanel');
+const panelTime = document.getElementById('panelTime');
+const panelDate = document.getElementById('panelDate');
+const saveBtn = document.getElementById('saveDraftSlotBtn');
+const copyBtn = document.getElementById('copySlotBtn');
+const deleteBtn = document.getElementById('deleteSlotBtn');
+const closePanelBtn = document.getElementById('closePanelBtn');
+
+function getCSRFToken() {
+    const cookie = document.cookie.split(';').find(item => item.trim().startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1] : '';
+}
+
+function timeToMinutes(time) {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function minutesToTime(total) {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function snapMinutes(minutes) {
+    return Math.round(minutes / STEP_MIN) * STEP_MIN;
+}
+
+function yToTime(y) {
+    const minutesFromStart = snapMinutes(y / PX_PER_MIN);
+    const total = START_HOUR * 60 + minutesFromStart;
+    const min = START_HOUR * 60;
+    const max = END_HOUR * 60;
+
+    return Math.max(min, Math.min(max, total));
+}
+
+function positionBlock(block, startTime, endTime) {
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+
+    const top = (start - START_HOUR * 60) * PX_PER_MIN;
+    const height = Math.max((end - start) * PX_PER_MIN, 36);
+
+    block.style.top = `${top}px`;
+    block.style.height = `${height}px`;
+}
+
+function initializeExistingBlocks() {
+    document.querySelectorAll('.slot-block').forEach(block => {
+        const start = block.dataset.start;
+        const end = block.dataset.end;
+
+        if (start && end) {
+            positionBlock(block, start, end);
+        }
+    });
+}
+
+function openPanel(data, targetElement = null) {
+    selectedSlot = data;
+
+    panelTime.textContent = `${data.start} — ${data.end}`;
+    panelDate.textContent = data.date;
+
+    if (data.isDraft) {
+        saveBtn.style.display = 'inline-flex';
+        copyBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+    } else {
+        saveBtn.style.display = 'none';
+        copyBtn.style.display = 'inline-flex';
+        deleteBtn.style.display = 'inline-flex';
+    }
+
+    panel.classList.add('active');
+
+    if (targetElement) {
+        const rect = targetElement.getBoundingClientRect();
+
+        let left = rect.right + 12;
+        let top = rect.top;
+
+        if (left + 340 > window.innerWidth) {
+            left = rect.left - 340;
+        }
+
+        if (top + 180 > window.innerHeight) {
+            top = window.innerHeight - 200;
+        }
+
+        panel.style.left = `${Math.max(16, left)}px`;
+        panel.style.top = `${Math.max(16, top)}px`;
+    }
+}
+
+function closePanel() {
+    panel.classList.remove('active');
+    selectedSlot = null;
+
+    if (draftSlot) {
+        draftSlot.remove();
+        draftSlot = null;
+    }
+}
+
+document.querySelectorAll('.day-column').forEach(column => {
+    column.addEventListener('mousedown', function (e) {
+        if (e.target.closest('.slot-block')) return;
+
+        isDragging = true;
+        dragColumn = column;
+
+        const rect = column.getBoundingClientRect();
+        dragStartY = e.clientY - rect.top + column.parentElement.parentElement.scrollTop;
+
+        if (draftSlot) draftSlot.remove();
+
+        draftSlot = document.createElement('div');
+        draftSlot.className = 'slot-block draft-slot';
+        draftSlot.innerHTML = '<strong></strong><span>Новый интервал</span>';
+        column.appendChild(draftSlot);
+    });
+
+    column.addEventListener('mousemove', function (e) {
+        if (!isDragging || dragColumn !== column || !draftSlot) return;
+
+        const rect = column.getBoundingClientRect();
+        const currentY = e.clientY - rect.top + column.parentElement.parentElement.scrollTop;
+
+        const y1 = Math.min(dragStartY, currentY);
+        const y2 = Math.max(dragStartY, currentY);
+
+        const start = yToTime(y1);
+        const end = yToTime(y2);
+
+        if (end <= start) return;
+
+        const startTime = minutesToTime(start);
+        const endTime = minutesToTime(end);
+
+        draftSlot.dataset.start = startTime;
+        draftSlot.dataset.end = endTime;
+        draftSlot.dataset.date = column.dataset.date;
+
+        draftSlot.querySelector('strong').textContent = `${startTime} — ${endTime}`;
+        positionBlock(draftSlot, startTime, endTime);
+    });
+
+    column.addEventListener('mouseup', function () {
+        if (!isDragging || !draftSlot) return;
+
+        isDragging = false;
+
+        const start = draftSlot.dataset.start;
+        const end = draftSlot.dataset.end;
+        const date = draftSlot.dataset.date;
+
+        if (!start || !end || start === end) {
+            draftSlot.remove();
+            draftSlot = null;
+            return;
+        }
+
+        openPanel({
+            isDraft: true,
+            date,
+            start,
+            end
+        }, draftSlot);
+            });
+});
+
+document.addEventListener('mouseup', function () {
+    isDragging = false;
+});
+
+document.querySelectorAll('.saved-slot').forEach(slot => {
+    slot.addEventListener('click', function () {
+        openPanel({
+            isDraft: false,
+            id: this.dataset.slotId,
+            date: this.dataset.date,
+            start: this.dataset.start,
+            end: this.dataset.end
+        }, this);
+    });
+});
+
+saveBtn.addEventListener('click', function () {
+    if (!selectedSlot || !selectedSlot.isDraft) return;
+
+    const formData = new FormData();
+    formData.append('date', selectedSlot.date);
+    formData.append('start_time', selectedSlot.start);
+    formData.append('end_time', selectedSlot.end);
+
+    fetch("{% url 'ajax_create_schedule_slot' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || 'Ошибка сохранения');
+            return;
+        }
+
+        panel.classList.remove('active');
+        location.reload();
+    });
+});
+
+deleteBtn.addEventListener('click', function () {
+    if (!selectedSlot || selectedSlot.isDraft) return;
+
+    fetch(`/master/schedule/ajax/delete/${selectedSlot.id}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || 'Ошибка удаления');
+            return;
+        }
+
+        location.reload();
+    });
+});
+
+closePanelBtn.addEventListener('click', closePanel);
+
+const copyModal = document.getElementById('copyModal');
+const closeCopyBtn = document.getElementById('closeCopyBtn');
+const confirmCopyBtn = document.getElementById('confirmCopyBtn');
+
+copyBtn.addEventListener('click', function () {
+    if (!selectedSlot || selectedSlot.isDraft) return;
+    copyModal.classList.add('active');
+});
+
+closeCopyBtn.addEventListener('click', function () {
+    copyModal.classList.remove('active');
+});
+
+confirmCopyBtn.addEventListener('click', function () {
+    if (!selectedSlot || selectedSlot.isDraft) return;
+
+    const checked = [...copyModal.querySelectorAll('input[type="checkbox"]:checked')]
+        .map(input => input.value);
+
+    if (!checked.length) {
+        alert('Выберите хотя бы одну дату');
+        return;
+    }
+
+    const formData = new FormData();
+    checked.forEach(date => formData.append('dates[]', date));
+
+    fetch(`/master/schedule/ajax/copy/${selectedSlot.id}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || 'Ошибка копирования');
+            return;
+        }
+
+        location.reload();
+    });
+});
+
+initializeExistingBlocks();
+</script>
 {% endblock %}
