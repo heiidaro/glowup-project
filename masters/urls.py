@@ -29,4 +29,13 @@ urlpatterns = [
          name='master_public_profile'),
     path('profile/<int:master_id>/review/',
          views.add_master_review, name='add_master_review'),
+    path('schedule/', views.master_schedule, name='master_schedule'),
+    path('schedule/add/', views.add_schedule_slot, name='add_schedule_slot'),
+    path('schedule/delete/<int:slot_id>/',
+         views.delete_schedule_slot, name='delete_schedule_slot'),
+
+    path('profile/<int:master_id>/book/',
+         views.book_master, name='book_master'),
+    path('profile/<int:master_id>/book/create/',
+         views.create_master_booking, name='create_master_booking'),
 ]

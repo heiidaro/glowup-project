@@ -52,7 +52,7 @@
 
             <div class="hero-actions">
                 <button class="btn-light" onclick="alert('Чат будет добавлен позже')">Написать</button>
-                <a href="#services" class="btn-dark">Записаться</a>
+                <a href="{% url 'book_master' master.id %}" class="btn-dark">Записаться</a>
             </div>
         </div>
     </section>
@@ -85,7 +85,7 @@
                 <div class="service-side">
                     <strong>{{ service.price|floatformat:0 }} ₽</strong>
                     <span>{{ service.duration_minutes }} мин</span>
-                    <button onclick="alert('Форма записи будет добавлена позже')">Записаться</button>
+                    <a class="service-book-btn" href="{% url 'book_master' master.id %}?service={{ service.id }}">Записаться</a>
                 </div>
             </div>
             {% empty %}
@@ -775,6 +775,26 @@
     margin-top: 8px;
     color: #6B7280;
     font-size: 12px;
+}
+
+
+.service-book-btn {
+    min-height: 42px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    background: #202020;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: .2s ease;
+}
+
+.service-book-btn:hover {
+    background: #000;
+    transform: translateY(-2px);
 }
 </style>
 

@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from .models import MasterProfile
 from bookings.models import Booking
-from datetime import datetime, date
+from datetime import datetime, date, time, timedelta
 import calendar
 from django.utils import timezone
 from reviews.models import Review
@@ -15,7 +15,8 @@ from notifications.models import Notification
 from .models import MasterProfile
 import requests
 from django.conf import settings
-from .models import MasterProfile, Portfolio, Service, ServiceCategory
+from .models import MasterProfile, Portfolio, Service, ServiceCategory, MasterScheduleSlot
+from django.db.models import Q
 
 
 def geocode_yandex_address(address: str):
@@ -178,6 +179,85 @@ def get_month_name(month):
         'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
     ]
     return months[month - 1]
+
+
+def round_duration_to_slot(duration_minutes):
+    """
+    Округляет длительность услуги вверх до шага 30 минут.
+    80 минут -> 90 минут.
+    """
+    step = 30
+    return ((int(duration_minutes) + step - 1) // step) * step
+
+
+def time_to_minutes(value):
+    return value.hour * 60 + value.minute
+
+
+def minutes_to_time(value):
+    return time(value // 60, value % 60)
+
+
+def generate_available_slots(master, service, selected_date):
+    """
+    Генерирует доступные времена записи по свободным интервалам мастера
+    и уже существующим активным записям.
+    """
+    rounded_duration = round_duration_to_slot(service.duration_minutes)
+
+    schedule_slots = MasterScheduleSlot.objects.filter(
+        master=master,
+        date=selected_date,
+        is_available=True
+    ).order_by('start_time')
+
+    active_bookings = Booking.objects.filter(
+        master=master,
+        date=selected_date,
+        status='active'
+    )
+
+    busy_ranges = []
+
+    for booking in active_bookings:
+        start = time_to_minutes(booking.time)
+
+        if booking.end_time:
+            end = time_to_minutes(booking.end_time)
+        else:
+            end = start + 60
+
+        busy_ranges.append((start, end))
+
+    result = []
+
+    for slot in schedule_slots:
+        slot_start = time_to_minutes(slot.start_time)
+        slot_end = time_to_minutes(slot.end_time)
+
+        current = slot_start
+
+        while current + rounded_duration <= slot_end:
+            candidate_start = current
+            candidate_end = current + rounded_duration
+
+            has_conflict = False
+
+            for busy_start, busy_end in busy_ranges:
+                if candidate_start < busy_end and candidate_end > busy_start:
+                    has_conflict = True
+                    break
+
+            if not has_conflict:
+                result.append({
+                    'start': minutes_to_time(candidate_start),
+                    'end': minutes_to_time(candidate_end),
+                    'duration': rounded_duration,
+                })
+
+            current += 30
+
+    return result
 
 
 def get_dashboard_calendar_days(year, month, bookings):
@@ -979,3 +1059,215 @@ def add_master_review(request, master_id):
         messages.success(request, 'Отзыв добавлен')
 
     return redirect('master_public_profile', master_id=master.id)
+
+
+@login_required
+def master_schedule(request):
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    selected_date = request.GET.get('date')
+    if selected_date:
+        try:
+            selected_date_obj = datetime.strptime(
+                selected_date, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date_obj = timezone.now().date()
+    else:
+        selected_date_obj = timezone.now().date()
+
+    slots = MasterScheduleSlot.objects.filter(
+        master=master_profile,
+        date=selected_date_obj
+    ).order_by('start_time')
+
+    bookings = Booking.objects.filter(
+        master=master_profile,
+        date=selected_date_obj,
+        status='active'
+    ).select_related('client').order_by('time')
+
+    context = {
+        'master': master_profile,
+        'selected_date': selected_date_obj,
+        'slots': slots,
+        'bookings': bookings,
+    }
+
+    return render(request, 'masters/schedule.html', context)
+
+
+@login_required
+def add_schedule_slot(request):
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    if request.method == 'POST':
+        master_profile = MasterProfile.objects.get(user=request.user)
+
+        slot_date = request.POST.get('date')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
+
+        if not slot_date or not start_time or not end_time:
+            messages.error(request, 'Заполните дату, начало и конец интервала')
+            return redirect('master_schedule')
+
+        MasterScheduleSlot.objects.create(
+            master=master_profile,
+            date=slot_date,
+            start_time=start_time,
+            end_time=end_time,
+            is_available=True
+        )
+
+        messages.success(request, 'Интервал добавлен')
+
+    return redirect(f"{request.META.get('HTTP_REFERER', '/master/schedule/')}")
+
+
+@login_required
+def delete_schedule_slot(request, slot_id):
+    if request.user.role != 'master':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    master_profile = MasterProfile.objects.get(user=request.user)
+
+    slot = get_object_or_404(
+        MasterScheduleSlot,
+        id=slot_id,
+        master=master_profile
+    )
+
+    if request.method == 'POST':
+        selected_date = slot.date
+        slot.delete()
+        messages.success(request, 'Интервал удалён')
+        return redirect(f'/master/schedule/?date={selected_date}')
+
+    return redirect('master_schedule')
+
+
+@login_required
+def book_master(request, master_id):
+    if request.user.role != 'client':
+        messages.error(request, 'Записываться могут только клиенты')
+        return redirect('master_public_profile', master_id=master_id)
+
+    master = get_object_or_404(MasterProfile, id=master_id)
+
+    services = Service.objects.filter(
+        master=master,
+        is_active=True
+    ).select_related('category').order_by('price')
+
+    selected_service_id = request.GET.get('service')
+    selected_date = request.GET.get('date')
+
+    selected_service = None
+    selected_date_obj = None
+    available_slots = []
+
+    if selected_service_id:
+        selected_service = get_object_or_404(
+            Service,
+            id=selected_service_id,
+            master=master,
+            is_active=True
+        )
+
+    if selected_date:
+        try:
+            selected_date_obj = datetime.strptime(
+                selected_date, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date_obj = None
+
+    if selected_service and selected_date_obj:
+        available_slots = generate_available_slots(
+            master,
+            selected_service,
+            selected_date_obj
+        )
+
+    context = {
+        'master': master,
+        'services': services,
+        'selected_service': selected_service,
+        'selected_date': selected_date_obj,
+        'available_slots': available_slots,
+    }
+
+    return render(request, 'masters/book_master.html', context)
+
+
+@login_required
+def create_master_booking(request, master_id):
+    if request.user.role != 'client':
+        messages.error(request, 'Записываться могут только клиенты')
+        return redirect('master_public_profile', master_id=master_id)
+
+    master = get_object_or_404(MasterProfile, id=master_id)
+
+    if request.method != 'POST':
+        return redirect('book_master', master_id=master.id)
+
+    service_id = request.POST.get('service_id')
+    booking_date = request.POST.get('date')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
+    client_note = request.POST.get('client_note', '').strip()
+    client_photo = request.FILES.get('client_photo')
+
+    service = get_object_or_404(
+        Service,
+        id=service_id,
+        master=master,
+        is_active=True
+    )
+
+    if not booking_date or not start_time or not end_time:
+        messages.error(request, 'Выберите дату и свободное время')
+        return redirect('book_master', master_id=master.id)
+
+    booking_date_obj = datetime.strptime(booking_date, '%Y-%m-%d').date()
+    start_time_obj = datetime.strptime(start_time, '%H:%M').time()
+    end_time_obj = datetime.strptime(end_time, '%H:%M').time()
+
+    # Повторная серверная проверка: слот всё ещё свободен
+    available_slots = generate_available_slots(
+        master, service, booking_date_obj)
+    is_available = any(
+        slot['start'] == start_time_obj and slot['end'] == end_time_obj
+        for slot in available_slots
+    )
+
+    if not is_available:
+        messages.error(request, 'Это время уже занято. Выберите другой слот')
+        return redirect(
+            f'/master/profile/{master.id}/book/?service={service.id}&date={booking_date}'
+        )
+
+    client_profile = request.user.client_profile
+
+    Booking.objects.create(
+        client=client_profile,
+        master=master,
+        service=service.name,
+        service_ref=service,
+        date=booking_date_obj,
+        time=start_time_obj,
+        end_time=end_time_obj,
+        price=service.price,
+        status='active',
+        client_note=client_note,
+        client_photo=client_photo
+    )
+
+    messages.success(request, 'Вы успешно записались к мастеру')
+    return redirect('client_bookings')

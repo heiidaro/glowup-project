@@ -1,0 +1,356 @@
+{% extends 'base_no_sidebar.html' %}
+{% load static %}
+
+{% block title %}Запись к мастеру{% endblock %}
+
+{% block content %}
+<div class="booking-page">
+    <div class="booking-header">
+        <div>
+            <h1>Запись к мастеру</h1>
+            <p>{{ master.display_name }}</p>
+        </div>
+        <a href="{% url 'master_public_profile' master.id %}">Назад к профилю</a>
+    </div>
+
+    <div class="booking-layout">
+        <section class="booking-card">
+            <h3>1. Выберите услугу</h3>
+
+            <div class="services-choice">
+                {% for service in services %}
+                <a class="service-choice {% if selected_service and selected_service.id == service.id %}active{% endif %}"
+                   href="?service={{ service.id }}{% if selected_date %}&date={{ selected_date|date:'Y-m-d' }}{% endif %}">
+                    <div>
+                        <strong>{{ service.name }}</strong>
+                        {% if service.category %}
+                            <span>#{{ service.category.name }}</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <b>{{ service.price|floatformat:0 }} ₽</b>
+                        <small>{{ service.duration_minutes }} мин</small>
+                    </div>
+                </a>
+                {% empty %}
+                <p class="empty-text">У мастера пока нет услуг</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="booking-card">
+            <h3>2. Выберите дату</h3>
+
+            <form method="GET" class="date-form">
+                {% if selected_service %}
+                    <input type="hidden" name="service" value="{{ selected_service.id }}">
+                {% endif %}
+                <input type="date" name="date" value="{% if selected_date %}{{ selected_date|date:'Y-m-d' }}{% endif %}" required>
+                <button type="submit">Показать время</button>
+            </form>
+
+            {% if selected_service %}
+            <div class="price-note">
+                <strong>{{ selected_service.price|floatformat:0 }} ₽</strong>
+                <span>Стоимость может измениться на усмотрение мастера. Детали можно уточнить в чате.</span>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="booking-card full-width">
+            <h3>3. Свободное время</h3>
+
+            {% if selected_service and selected_date %}
+                {% if available_slots %}
+                    <form method="POST" action="{% url 'create_master_booking' master.id %}" enctype="multipart/form-data" class="create-booking-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="service_id" value="{{ selected_service.id }}">
+                        <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+                        <input type="hidden" name="start_time" id="selectedStartTime">
+                        <input type="hidden" name="end_time" id="selectedEndTime">
+
+                        <div class="slots-grid">
+                            {% for slot in available_slots %}
+                            <button type="button"
+                                    class="slot-choice"
+                                    data-start="{{ slot.start|time:'H:i' }}"
+                                    data-end="{{ slot.end|time:'H:i' }}">
+                                <strong>{{ slot.start|time:"H:i" }}</strong>
+                                <span>до {{ slot.end|time:"H:i" }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+
+                        <div class="booking-extra">
+                            <label>
+                                Пожелание к услуге
+                                <textarea name="client_note" rows="4" placeholder="Например: желаемый дизайн, особенности, комментарий"></textarea>
+                            </label>
+
+                            <label>
+                                Фото-пример
+                                <input type="file" name="client_photo" accept="image/*">
+                            </label>
+                        </div>
+
+                        <button type="submit" class="submit-booking-btn">
+                            Записаться
+                        </button>
+                    </form>
+                {% else %}
+                    <p class="empty-text">На выбранную дату нет свободного времени</p>
+                {% endif %}
+            {% else %}
+                <p class="empty-text">Сначала выберите услугу и дату</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+<style>
+.booking-page {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.booking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.booking-header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #202020;
+}
+
+.booking-header p,
+.empty-text {
+    color: #6B7280;
+}
+
+.booking-header a {
+    color: #202020;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.booking-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.booking-card {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+}
+
+.booking-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.booking-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.services-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.service-choice {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    background: #F7F7F5;
+    color: #202020;
+    text-decoration: none;
+    transition: .2s ease;
+}
+
+.service-choice:hover,
+.service-choice.active {
+    background: #202020;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.service-choice span,
+.service-choice small {
+    display: block;
+    color: #6B7280;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.service-choice.active span,
+.service-choice.active small,
+.service-choice:hover span,
+.service-choice:hover small {
+    color: rgba(255,255,255,.75);
+}
+
+.date-form {
+    display: grid;
+    gap: 12px;
+}
+
+.date-form input {
+    height: 42px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 0 12px;
+}
+
+.date-form button,
+.submit-booking-btn {
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: #202020;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.price-note {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 14px;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+}
+
+.price-note strong {
+    display: block;
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.price-note span {
+    color: #6B7280;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.slot-choice {
+    min-height: 70px;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    background: #F7F7F5;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.slot-choice strong {
+    display: block;
+    font-size: 18px;
+}
+
+.slot-choice span {
+    color: #6B7280;
+    font-size: 12px;
+}
+
+.slot-choice.active,
+.slot-choice:hover {
+    background: #202020;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.slot-choice.active span,
+.slot-choice:hover span {
+    color: rgba(255,255,255,.75);
+}
+
+.booking-extra {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.booking-extra label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.booking-extra textarea,
+.booking-extra input {
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 12px;
+    font-family: inherit;
+}
+
+.submit-booking-btn {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .booking-layout,
+    .booking-extra {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const startInput = document.getElementById('selectedStartTime');
+    const endInput = document.getElementById('selectedEndTime');
+    const buttons = document.querySelectorAll('.slot-choice');
+
+    buttons.forEach(button => {
+        button.addEventListener('click', function () {
+            buttons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+
+            startInput.value = this.dataset.start;
+            endInput.value = this.dataset.end;
+        });
+    });
+
+    const form = document.querySelector('.create-booking-form');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!startInput.value || !endInput.value) {
+                e.preventDefault();
+                alert('Выберите свободное время');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

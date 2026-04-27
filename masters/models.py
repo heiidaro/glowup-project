@@ -97,3 +97,24 @@ class Service(models.Model):
     class Meta:
         db_table = 'services'
         ordering = ['-created_at']
+
+
+class MasterScheduleSlot(models.Model):
+    master = models.ForeignKey(
+        MasterProfile,
+        on_delete=models.CASCADE,
+        related_name='schedule_slots'
+    )
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'master_schedule_slots'
+        ordering = ['date', 'start_time']
+
+    def __str__(self):
+        return f"{self.master.display_name}: {self.date} {self.start_time}-{self.end_time}"
