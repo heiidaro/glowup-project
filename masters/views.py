@@ -302,6 +302,12 @@ def master_dashboard(request):
 
     service_categories = ServiceCategory.objects.all()
 
+    reviews = Review.objects.filter(
+        master=master_profile,
+        is_approved=True,
+        is_blocked=False
+    ).select_related('client').order_by('-created_at')[:3]
+
     context = {
         'master': master_profile,
         'user': request.user,
@@ -319,6 +325,7 @@ def master_dashboard(request):
         'portfolio_items': portfolio_items,
         'master_services': master_services,
         'service_categories': service_categories,
+        'reviews': reviews,
     }
 
     return render(request, 'masters/dashboard.html', context)
@@ -758,15 +765,19 @@ def master_reviews(request):
         return redirect('home')
 
     master_profile = MasterProfile.objects.get(user=request.user)
+
     reviews = Review.objects.filter(
         master=master_profile,
         is_approved=True,
         is_blocked=False
     ).select_related('client').order_by('-created_at')
 
+    avg_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+
     context = {
         'reviews': reviews,
         'master': master_profile,
+        'avg_rating': avg_rating,
     }
 
     return render(request, 'masters/reviews.html', context)

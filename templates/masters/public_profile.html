@@ -161,6 +161,21 @@
               <button type="submit">Оставить отзыв</button>
           </div>
       </form>
+      <div class="reviews-list">
+    {% for review in reviews %}
+      <div class="review-card">
+          <div class="review-top">
+              <strong>{{ review.client.full_name|default:"Клиент" }}</strong>
+              <span>★ {{ review.rating }}</span>
+          </div>
+
+          <p>{{ review.comment }}</p>
+          <small>{{ review.created_at|date:"d.m.Y" }}</small>
+      </div>
+      {% empty %}
+      <p class="empty-text">Отзывов пока нет</p>
+      {% endfor %}
+  </div>
       {% endif %}
 </div>
 
@@ -710,6 +725,56 @@
     .portfolio-masonry {
         column-count: 1;
     }
+}
+
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.review-card {
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 15px;
+    transition: .2s ease;
+}
+
+.review-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0,0,0,.05);
+}
+
+.review-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.review-top strong {
+    font-weight: 600;
+    color: #202020;
+}
+
+.review-top span {
+    color: #F59E0B;
+    font-weight: 600;
+}
+
+.review-card p {
+    color: #374151;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.review-card small {
+    display: block;
+    margin-top: 8px;
+    color: #6B7280;
+    font-size: 12px;
 }
 </style>
 

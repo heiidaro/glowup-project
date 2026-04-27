@@ -24,9 +24,24 @@ class Booking(models.Model):
         related_name='bookings'
     )
     service = models.CharField(max_length=200)
+    service_ref = models.ForeignKey(
+        'masters.Service',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='service_id',
+        related_name='bookings'
+    )
     date = models.DateField()
     time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    client_note = models.TextField(blank=True, null=True)
+    client_photo = models.ImageField(
+        upload_to='bookings/client_photos/',
+        blank=True,
+        null=True
+    )
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default='active')
     response = models.OneToOneField(

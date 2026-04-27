@@ -4,104 +4,380 @@
 {% block title %}Отзывы{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Отзывы клиентов</h1>
-    <p>Все отзывы о вашей работе</p>
-</div>
+<div class="reviews-page">
+    <div class="page-header reviews-header">
+        <div>
+            <h1>Отзывы клиентов</h1>
+            <p>Все отзывы о вашей работе</p>
+        </div>
 
-{% if reviews %}
-    <div class="reviews-list">
-        {% for review in reviews %}
-        <div class="review-card">
-            <div class="review-header">
-                <div class="reviewer-avatar">
-                    {% if review.client.avatar %}
-                        <img src="{{ review.client.avatar.url }}" alt="">
-                    {% else %}
-                        <div class="avatar-placeholder">
-                            {{ review.client.full_name|first|default:"К" }}
-                        </div>
-                    {% endif %}
-                </div>
-                <div class="reviewer-info">
-                    <h3>{{ review.client.full_name|default:"Клиент" }}</h3>
-                    <div class="review-rating">
-                        {% for i in "12345"|make_list %}
-                            {% if forloop.counter <= review.rating %}
-                                <i class="fas fa-star"></i>
-                            {% else %}
-                                <i class="far fa-star"></i>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    <span class="review-date">{{ review.created_at|date:"d.m.Y" }}</span>
-                </div>
+        <div class="reviews-total">
+            <strong>{{ reviews|length }}</strong>
+            <span>всего отзывов</span>
+        </div>
+    </div>
+
+    {% if reviews %}
+        <div class="reviews-stats-grid">
+            <div class="rating-summary-card">
+                <span>Средняя оценка</span>
+                <strong>{{ avg_rating|floatformat:1 }}</strong>
+                <p>на основе {{ reviews|length }} отзывов</p>
             </div>
-            <div class="review-content">
-                <p>{{ review.comment|default:"Отзыв без комментария" }}</p>
+
+            <div class="rating-bars-card">
+                {% for rating_value in "54321"|make_list %}
+                <div class="rating-bar-row">
+                    <span>{{ rating_value }} ★</span>
+                    <div class="rating-bar">
+                        <div class="rating-bar-fill rating-{{ rating_value }}"></div>
+                    </div>
+                    <strong class="rating-count" data-rating="{{ rating_value }}">0</strong>
+                </div>
+                {% endfor %}
             </div>
         </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="empty-state">
-        <i class="fas fa-star"></i>
-        <p>Пока нет отзывов</p>
-    </div>
-{% endif %}
+
+        <div class="reviews-list">
+            {% for review in reviews %}
+            <article class="review-card">
+                <div class="review-top">
+                    <div class="reviewer-avatar">
+                        {% if review.client.avatar %}
+                            <img src="{{ review.client.avatar.url }}" alt="">
+                        {% else %}
+                            <div class="avatar-placeholder">
+                                {{ review.client.full_name|first|default:"К" }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="reviewer-info">
+                        <div class="reviewer-line">
+                            <h3>{{ review.client.full_name|default:"Клиент" }}</h3>
+                            <span class="review-date">{{ review.created_at|date:"d.m.Y" }}</span>
+                        </div>
+
+                        <div class="review-rating">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span>{{ review.rating }}/5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-content">
+                    <p>{{ review.comment|default:"Отзыв без комментария" }}</p>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reviews-empty">
+            <div class="empty-icon">
+                <i class="fas fa-star"></i>
+            </div>
+            <h3>Отзывов пока нет</h3>
+            <p>Когда клиенты оставят отзывы, они появятся на этой странице.</p>
+        </div>
+    {% endif %}
+</div>
 
 <style>
-.reviews-list {
+.reviews-page {
     display: flex;
     flex-direction: column;
+    gap: 22px;
+    animation: pageFade .35s ease;
+}
+
+@keyframes pageFade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.reviews-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     gap: 20px;
 }
 
-.review-card {
-    background: var(--white);
-    border: 1px solid var(--light);
-    border-radius: 12px;
-    padding: 20px;
+.reviews-header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 6px;
 }
 
-.review-header {
+.reviews-header p {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.reviews-total,
+.rating-summary-card,
+.rating-bars-card,
+.review-card,
+.reviews-empty {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+}
+
+.reviews-total {
+    min-width: 140px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    text-align: center;
+}
+
+.reviews-total strong,
+.rating-summary-card strong {
+    display: block;
+    font-weight: 600;
+    color: #202020;
+}
+
+.reviews-total strong {
+    font-size: 24px;
+}
+
+.reviews-total span,
+.rating-summary-card span,
+.rating-summary-card p {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.reviews-stats-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 18px;
+}
+
+.rating-summary-card,
+.rating-bars-card {
+    border-radius: 20px;
+    padding: 18px;
+}
+
+.rating-summary-card strong {
+    font-size: 42px;
+    margin: 8px 0 4px;
+}
+
+.rating-bars-card {
     display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
+    flex-direction: column;
+    gap: 11px;
+}
+
+.rating-bar-row {
+    display: grid;
+    grid-template-columns: 42px 1fr 28px;
+    align-items: center;
+    gap: 10px;
+}
+
+.rating-bar-row span,
+.rating-bar-row strong {
+    font-size: 13px;
+    color: #374151;
+}
+
+.rating-bar {
+    height: 9px;
+    background: #F3F4F6;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.rating-bar-fill {
+    height: 100%;
+    width: 0;
+    background: #F59E0B;
+    border-radius: 999px;
+    transition: width .45s ease;
+}
+
+.reviews-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.review-card {
+    border-radius: 20px;
+    padding: 18px;
+    transition: .22s ease;
+}
+
+.review-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 34px rgba(0,0,0,.08);
+}
+
+.review-top {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 14px;
 }
 
 .reviewer-avatar {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
     border-radius: 50%;
     overflow: hidden;
-    background: var(--dark);
+    background: #202020;
     color: white;
+}
+
+.reviewer-avatar img,
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: 600;
 }
 
-.reviewer-info h3 {
+.reviewer-info {
+    width: 100%;
+    min-width: 0;
+}
+
+.reviewer-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 7px;
+}
+
+.reviewer-line h3 {
     font-size: 16px;
     font-weight: 600;
-    margin-bottom: 5px;
-}
-
-.review-rating {
-    color: #f39c12;
-    font-size: 14px;
-    margin-bottom: 5px;
+    color: #202020;
+    margin: 0;
 }
 
 .review-date {
+    color: #6B7280;
     font-size: 12px;
-    color: var(--gray);
+    white-space: nowrap;
+}
+
+.review-rating {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: #F59E0B;
+    font-size: 13px;
+}
+
+.review-rating span {
+    margin-left: 7px;
+    color: #6B7280;
+    font-size: 12px;
+}
+
+.review-content {
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 14px;
 }
 
 .review-content p {
-    color: var(--gray);
+    color: #374151;
     line-height: 1.5;
+    font-size: 14px;
+    margin: 0;
+}
+
+.reviews-empty {
+    border-radius: 22px;
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #F7F7F5;
+    color: #202020;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 16px;
+}
+
+.reviews-empty h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 8px;
+}
+
+.reviews-empty p {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .reviews-list,
+    .reviews-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reviews-header {
+        flex-direction: column;
+    }
+
+    .reviews-total {
+        width: 100%;
+    }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ratings = [
+        {% for review in reviews %}
+            {{ review.rating }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+
+    ratings.forEach(rating => {
+        const value = Math.round(Number(rating));
+        if (counts[value] !== undefined) counts[value]++;
+    });
+
+    const total = ratings.length || 1;
+
+    Object.keys(counts).forEach(rating => {
+        const countEl = document.querySelector(`.rating-count[data-rating="${rating}"]`);
+        const fillEl = document.querySelector(`.rating-bar-fill.rating-${rating}`);
+
+        if (countEl) countEl.textContent = counts[rating];
+        if (fillEl) fillEl.style.width = `${(counts[rating] / total) * 100}%`;
+    });
+});
+</script>
 {% endblock %}
