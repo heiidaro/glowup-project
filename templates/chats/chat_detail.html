@@ -48,8 +48,26 @@
                 </div>
 
                 {% for message in group.messages %}
-                <div class="message-row {% if message.sender == request.user %}own{% else %}other{% endif %}">
+                <div class="message-row {% if message.sender == request.user %}own{% else %}other{% endif %}" id="message-{{ message.id }}">
                     <div class="message-bubble">
+
+                      {% if message.reply_to %}
+                      <button type="button"
+                              class="reply-box reply-jump"
+                              data-target="message-{{ message.reply_to.id }}">
+                          <strong>
+                              {% if message.reply_to.sender == request.user %}
+                                  Вы
+                              {% elif message.reply_to.sender.role == 'master' %}
+                                  {{ chat.master.display_name|default:"Мастер" }}
+                              {% else %}
+                                  {{ chat.client.full_name|default:"Клиент" }}
+                              {% endif %}
+                          </strong>
+                          <span>{{ message.reply_to.content|default:"Вложение"|truncatechars:80 }}</span>
+                      </button>
+                      {% endif %}
+
                         <p>{{ message.content }}</p>
                         {% if message.attachment %}
                           <div class="message-attachment">
@@ -72,8 +90,53 @@
                           </div>
                       {% endif %}
 
+                      <div class="message-actions">
+                        {% if message.sender == request.user %}
+                            <button type="button"
+                                    class="message-action-btn edit-message-btn"
+                                    data-content="{{ message.content|escapejs }}"
+                                    data-url="{% url 'edit_message' message.id %}">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        {% endif %}
+
+                        <button type="button"
+                                    class="message-action-btn reply-message-btn"
+                                    data-id="{{ message.id }}"
+                                    data-content="{{ message.content|default:'Вложение'|escapejs }}"
+                                    data-author="{% if message.sender == request.user %}Вы{% elif message.sender.role == 'master' %}{{ chat.master.display_name|default:'Мастер'|escapejs }}{% else %}{{ chat.client.full_name|default:'Клиент'|escapejs }}{% endif %}">
+                                <i class="fas fa-reply"></i>
+                        </button>
+
+                        <button type="button"
+                                class="message-action-btn delete-message-btn"
+                                data-menu="delete-menu-{{ message.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+
+                        <div class="delete-menu" id="delete-menu-{{ message.id }}">
+                            <form method="POST" action="{% url 'delete_message' message.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="delete_type" value="self">
+                                <button type="submit">Удалить у себя</button>
+                            </form>
+
+                            {% if message.sender == request.user %}
+                            <form method="POST" action="{% url 'delete_message' message.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="delete_type" value="all">
+                                <button type="submit">Удалить у всех</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+
                         <div class="message-meta">
                             <span>{{ message.created_at|time:"H:i" }}</span>
+
+                            {% if message.edited_at %}
+                                <span class="edited-label">изм. {{ message.edited_at|time:"H:i" }}</span>
+                            {% endif %}
 
                             {% if message.sender == request.user %}
                                 {% if message.is_read %}
@@ -105,7 +168,31 @@
             </button>
         </div>
 
-        <form method="POST" enctype="multipart/form-data" class="message-form">
+
+        <div class="edit-preview" id="editPreview">
+            <div>
+                <strong>Редактирование сообщения</strong>
+                <span id="editPreviewText"></span>
+            </div>
+
+            <button type="button" id="cancelEditBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="reply-preview" id="replyPreview">
+            <div>
+                <strong id="replyPreviewAuthor">Ответ</strong>
+                <span id="replyPreviewText"></span>
+            </div>
+
+            <button type="button" id="cancelReplyBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+
+        <form method="POST" enctype="multipart/form-data" class="message-form" id="messageForm">
             {% csrf_token %}
 
             <label class="file-btn" title="Прикрепить файл">
@@ -113,12 +200,13 @@
                 <input type="file" name="attachment" id="attachmentInput" accept="image/*,video/*,.pdf,.doc,.docx,.txt">
             </label>
 
-            <textarea name="content" rows="1" placeholder="Введите сообщение..."></textarea>
+            <textarea id="messageInput" name="content" rows="1" placeholder="Введите сообщение..."></textarea>
 
-            <button type="submit">
+            <button type="submit" id="sendMessageBtn">
                 <i class="fas fa-paper-plane"></i>
                 Отправить
             </button>
+            <input type="hidden" name="reply_to_id" id="replyToInput">
         </form>
     </div>
 </div>
@@ -486,6 +574,250 @@
     background: #202020;
     color: #FFFFFF;
 }
+
+.message-bubble {
+    position: relative;
+}
+
+.message-actions {
+    display: none;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    position: relative;
+}
+
+.message-bubble:hover .message-actions {
+    display: flex;
+}
+
+.message-action-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,.9);
+    color: #202020;
+    box-shadow: 0 6px 14px rgba(0,0,0,.12);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-message-btn {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.delete-message-btn:hover {
+    background: #DC2626;
+    color: #FFFFFF;
+}
+
+.delete-menu {
+    position: absolute;
+    right: 0;
+    bottom: 36px;
+    width: 170px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    box-shadow: 0 14px 32px rgba(0,0,0,.16);
+    padding: 6px;
+    display: none;
+    z-index: 20;
+}
+
+.delete-menu.active {
+    display: block;
+}
+
+.delete-menu form {
+    margin: 0;
+}
+
+.delete-menu button {
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #202020;
+    font-size: 12px;
+}
+
+.delete-menu button:hover {
+    background: #F3F4F6;
+}
+
+.edited-label {
+    margin-left: 4px;
+    font-size: 11px;
+    opacity: .7;
+}
+
+.edit-preview {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 14px;
+    padding: 10px 12px;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-bottom: none;
+    border-radius: 14px 14px 0 0;
+}
+
+.edit-preview.active {
+    display: flex;
+}
+
+.edit-preview strong {
+    display: block;
+    font-size: 12px;
+    color: #202020;
+    margin-bottom: 3px;
+}
+
+.edit-preview span {
+    display: block;
+    max-width: 520px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #6B7280;
+    font-size: 12px;
+}
+
+#cancelEditBtn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 10px;
+    background: #FFFFFF;
+    color: #6B7280;
+    cursor: pointer;
+}
+
+
+
+.reply-box {
+    width: 100%;
+    display: block;
+    text-align: left;
+    cursor: pointer;
+
+    margin: 0 0 8px;
+    padding: 8px 10px;
+
+    border: none;
+    border-left: 3px solid #8DD6FF;
+    border-radius: 10px;
+
+    background: #F3F4F6;
+    color: #202020;
+}
+
+.message-row.own .reply-box {
+    background: rgba(255,255,255,.12);
+    color: #FFFFFF;
+}
+
+.reply-jump:hover {
+    background: #E5E7EB;
+}
+
+.message-row.own .reply-jump:hover {
+    background: rgba(255,255,255,.18);
+}
+
+.message-row.highlight-message .message-bubble {
+    animation: highlightReply 1.3s ease;
+}
+
+@keyframes highlightReply {
+    0% {
+        box-shadow: 0 0 0 0 rgba(32,32,32,.25);
+        transform: scale(1);
+    }
+    35% {
+        box-shadow: 0 0 0 4px rgba(32,32,32,.12);
+        transform: scale(1.015);
+    }
+    100% {
+        box-shadow: 0 6px 16px rgba(0,0,0,.04);
+        transform: scale(1);
+    }
+}
+
+.reply-box strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8DD6FF;
+    margin-bottom: 3px;
+}
+
+.reply-box span {
+    display: block;
+    font-size: 12px;
+    line-height: 1.35;
+    color: inherit;
+    opacity: .78;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reply-preview {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 14px;
+    padding: 10px 12px;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-bottom: none;
+    border-left: 4px solid #202020;
+    border-radius: 14px 14px 0 0;
+}
+
+.reply-preview.active {
+    display: flex;
+}
+
+.reply-preview strong {
+    display: block;
+    font-size: 12px;
+    color: #202020;
+    margin-bottom: 3px;
+}
+
+.reply-preview span {
+    display: block;
+    max-width: 520px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #6B7280;
+    font-size: 12px;
+}
+
+#cancelReplyBtn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 10px;
+    background: #FFFFFF;
+    color: #6B7280;
+    cursor: pointer;
+}
 </style>
 
 <script>
@@ -494,32 +826,123 @@ document.addEventListener('DOMContentLoaded', function () {
     if (box) {
         box.scrollTop = box.scrollHeight;
     }
-});
 
-const attachmentInput = document.getElementById('attachmentInput');
-const filePreview = document.getElementById('selectedFilePreview');
-const fileName = document.getElementById('selectedFileName');
-const removeFileBtn = document.getElementById('removeSelectedFile');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendMessageBtn');
+    const editPreview = document.getElementById('editPreview');
+    const editPreviewText = document.getElementById('editPreviewText');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const attachmentInput = document.getElementById('attachmentInput');
+    const fileBtn = document.querySelector('.file-btn');
 
-if (attachmentInput && filePreview && fileName && removeFileBtn) {
-    attachmentInput.addEventListener('change', function () {
-        const file = this.files[0];
+    document.querySelectorAll('.reply-jump').forEach(button => {
+        button.addEventListener('click', function () {
+            const targetId = this.dataset.target;
+            const target = document.getElementById(targetId);
 
-        if (!file) {
-            filePreview.classList.remove('active');
-            fileName.textContent = '';
-            return;
+            if (!target) return;
+
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+            target.classList.add('highlight-message');
+
+            setTimeout(() => {
+                target.classList.remove('highlight-message');
+            }, 1400);
+        });
+    });
+
+    document.querySelectorAll('.edit-message-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const content = this.dataset.content;
+            const url = this.dataset.url;
+
+            messageForm.action = url;
+            messageInput.value = content;
+            messageInput.focus();
+
+            editPreviewText.textContent = content;
+            editPreview.classList.add('active');
+
+            sendBtn.innerHTML = '<i class="fas fa-check"></i> Подтвердить';
+
+            if (attachmentInput) attachmentInput.value = '';
+            if (fileBtn) fileBtn.style.display = 'none';
+        });
+    });
+
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', function () {
+            messageForm.action = '';
+            messageInput.value = '';
+            editPreview.classList.remove('active');
+
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Отправить';
+
+            if (fileBtn) fileBtn.style.display = 'inline-flex';
+        });
+    }
+
+    document.querySelectorAll('.delete-message-btn').forEach(button => {
+        button.addEventListener('click', function (e) {
+            e.stopPropagation();
+
+            const menuId = this.dataset.menu;
+            const menu = document.getElementById(menuId);
+
+            document.querySelectorAll('.delete-menu').forEach(item => {
+                if (item !== menu) item.classList.remove('active');
+            });
+
+            menu.classList.toggle('active');
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.delete-menu') && !e.target.closest('.delete-message-btn')) {
+            document.querySelectorAll('.delete-menu').forEach(menu => {
+                menu.classList.remove('active');
+            });
         }
-
-        fileName.textContent = file.name;
-        filePreview.classList.add('active');
     });
 
-    removeFileBtn.addEventListener('click', function () {
-        attachmentInput.value = '';
-        fileName.textContent = '';
-        filePreview.classList.remove('active');
+
+    const replyPreview = document.getElementById('replyPreview');
+    const replyPreviewAuthor = document.getElementById('replyPreviewAuthor');
+    const replyPreviewText = document.getElementById('replyPreviewText');
+    const replyToInput = document.getElementById('replyToInput');
+    const cancelReplyBtn = document.getElementById('cancelReplyBtn');
+
+    document.querySelectorAll('.reply-message-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const content = this.dataset.content;
+            const author = this.dataset.author;
+
+            replyToInput.value = id;
+            replyPreviewAuthor.textContent = `Ответ: ${author}`;
+            replyPreviewText.textContent = content;
+            replyPreview.classList.add('active');
+
+            messageInput.focus();
+        });
     });
-}
+
+    if (cancelReplyBtn) {
+        cancelReplyBtn.addEventListener('click', function () {
+            replyToInput.value = '';
+            replyPreview.classList.remove('active');
+            replyPreviewAuthor.textContent = '';
+            replyPreviewText.textContent = '';
+        });
+    }
+
+    if (replyToInput) replyToInput.value = '';
+    if (replyPreview) replyPreview.classList.remove('active');
+    });
 </script>
 {% endblock %}

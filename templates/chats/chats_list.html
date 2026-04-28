@@ -12,14 +12,15 @@
         </div>
 
         <div class="chats-count">
-            <strong>{{ chats|length }}</strong>
+            <strong>{{ chats_data|length }}</strong>
             <span>диалогов</span>
         </div>
     </div>
 
-    {% if chats %}
+    {% if chats_data %}
     <div class="chats-list">
-        {% for chat in chats %}
+        {% for item in chats_data %}
+        {% with chat=item.chat %}
         <a href="{% url 'chat_detail' chat.id %}" class="chat-card">
             <div class="chat-avatar">
                 {% if request.user.role == 'master' %}
@@ -34,6 +35,9 @@
                     {% else %}
                         <div class="avatar-placeholder">{{ chat.master.display_name|first|default:"М" }}</div>
                     {% endif %}
+                {% endif %}
+                {% if item.unread_count > 0 %}
+                    <span class="unread-badge">{{ item.unread_count }}</span>
                 {% endif %}
             </div>
 
@@ -50,17 +54,34 @@
                     <span>{{ chat.updated_at|date:"d.m.Y H:i" }}</span>
                 </div>
 
-                <p>
-                    {% with last_message=chat.messages.last %}
-                        {% if last_message %}
-                            {{ last_message.content|default:"Вложение"|truncatechars:90 }}
+                <div class="last-message-row">
+                    <p>
+                        {% if item.last_message %}
+                            {{ item.last_message.content|default:"Вложение"|truncatechars:90 }}
                         {% else %}
                             Диалог создан, сообщений пока нет
                         {% endif %}
-                    {% endwith %}
-                </p>
+                    </p>
+
+                    {% if item.last_message %}
+                        <div class="last-message-meta">
+                            {% if item.last_message.sender == request.user %}
+                                {% if item.last_message.is_read %}
+                                    <span class="read-checks read">✓✓</span>
+                                {% else %}
+                                    <span class="read-checks">✓</span>
+                                {% endif %}
+                            {% endif %}
+
+                            <span class="last-message-time">
+                                {{ item.last_message.created_at|time:"H:i" }}
+                            </span>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </a>
+        {% endwith %}
         {% endfor %}
     </div>
     {% else %}
@@ -155,6 +176,8 @@
     overflow: hidden;
     background: #202020;
     color: #fff;
+    position: relative;
+    overflow: visible; /* чтобы кружок не обрезался */
 }
 
 .chat-avatar img,
@@ -251,6 +274,97 @@
         flex-direction: column;
         gap: 4px;
     }
+}
+
+
+.chat-avatar {
+    position: relative;
+}
+
+.unread-badge {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+
+    border-radius: 999px;
+
+    background: #EF4444; /* яркий красный */
+    color: #FFFFFF;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid #FFFFFF;
+
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+
+    z-index: 2;
+}
+
+
+
+.last-message-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.last-message-row p {
+    color: #6B7280;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.last-message-time {
+    color: #6B7280;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+
+.last-message-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.read-checks {
+    font-size: 12px !important;
+    letter-spacing: -3px;
+    color: #9CA3AF !important;
+    line-height: 1;
+}
+
+.read-checks.read {
+    color: #8DD6FF !important;
+}
+
+.message-status {
+    font-size: 11px;
+    line-height: 1;
+}
+
+.check {
+    display: inline-block;
+}
+
+.check.single {
+    color: #9CA3AF; /* серый */
+}
+
+.check.double {
+    color: #202020; /* под твой дизайн (можно accent) */
 }
 </style>
 {% endblock %}

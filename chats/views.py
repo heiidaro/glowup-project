@@ -26,8 +26,25 @@ def chats_list(request):
         messages.error(request, 'У вас нет доступа')
         return redirect('home')
 
+    chats_data = []
+
+    for chat in chats:
+        last_message = chat.last_message or chat.messages.order_by(
+            '-created_at').first()
+
+        unread_count = ChatMessage.objects.filter(
+            chat=chat,
+            is_read=False
+        ).exclude(sender=request.user).count()
+
+        chats_data.append({
+            'chat': chat,
+            'last_message': last_message,
+            'unread_count': unread_count,
+        })
+
     return render(request, 'chats/chats_list.html', {
-        'chats': chats
+        'chats_data': chats_data
     })
 
 
@@ -35,6 +52,7 @@ def chats_list(request):
 def chat_detail(request, chat_id):
     chat = get_object_or_404(Chat, id=chat_id)
 
+    # Проверка доступа
     if request.user.role == 'client' and chat.client.user != request.user:
         messages.error(request, 'У вас нет доступа к этому чату')
         return redirect('chats_list')
@@ -43,21 +61,35 @@ def chat_detail(request, chat_id):
         messages.error(request, 'У вас нет доступа к этому чату')
         return redirect('chats_list')
 
+    # Отметка сообщений как прочитанных
     ChatMessage.objects.filter(
         chat=chat,
         is_read=False
-    ).exclude(sender=request.user).update(is_read=True)
+    ).exclude(sender=request.user).update(
+        is_read=True,
+        read_at=timezone.now()
+    )
 
+    # === ОТПРАВКА СООБЩЕНИЯ / ФАЙЛА ===
     if request.method == 'POST':
         content = request.POST.get('content', '').strip()
         attachment = request.FILES.get('attachment')
+        reply_to_id = request.POST.get('reply_to_id')
+
+        reply_to = None
+        if reply_to_id:
+            reply_to = ChatMessage.objects.filter(
+                id=reply_to_id,
+                chat=chat
+            ).first()
 
         if content or attachment:
             message = ChatMessage.objects.create(
                 chat=chat,
                 sender=request.user,
                 content=content,
-                attachment=attachment
+                attachment=attachment,
+                reply_to=reply_to
             )
 
             chat.last_message = message
@@ -65,8 +97,25 @@ def chat_detail(request, chat_id):
 
         return redirect('chat_detail', chat_id=chat.id)
 
-    messages_qs = chat.messages.select_related('sender').order_by('created_at')
+    # === ПОЛУЧЕНИЕ СООБЩЕНИЙ ===
+    messages_qs = chat.messages.select_related(
+        'sender', 'reply_to', 'reply_to__sender').order_by('created_at')
 
+    visible_messages = []
+
+    for msg in messages_qs:
+        if msg.deleted_for_all:
+            continue
+
+        if msg.sender == request.user and msg.deleted_for_sender:
+            continue
+
+        if msg.sender != request.user and msg.deleted_for_receiver:
+            continue
+
+        visible_messages.append(msg)
+
+    # === ГРУППИРОВКА ПО ДАТАМ ===
     grouped_messages = []
     current_date = None
 
@@ -78,7 +127,7 @@ def chat_detail(request, chat_id):
 
     today = timezone.localdate()
 
-    for msg in messages_qs:
+    for msg in visible_messages:
         msg_date = msg.created_at.date()
 
         if msg_date == today:
@@ -154,3 +203,58 @@ def format_chat_date(value):
         return 'Вчера'
 
     return f'{message_date.day} {months[message_date.month]} {message_date.year}'
+
+
+@login_required
+def delete_message(request, message_id):
+    message = get_object_or_404(ChatMessage, id=message_id)
+    chat = message.chat
+
+    if request.user.role == 'client' and chat.client.user != request.user:
+        messages.error(request, 'Нет доступа')
+        return redirect('chats_list')
+
+    if request.user.role == 'master' and chat.master.user != request.user:
+        messages.error(request, 'Нет доступа')
+        return redirect('chats_list')
+
+    if request.method == 'POST':
+        delete_type = request.POST.get('delete_type')
+
+        if delete_type == 'all':
+            if message.sender != request.user:
+                messages.error(
+                    request, 'Удалить для всех можно только своё сообщение')
+                return redirect('chat_detail', chat_id=chat.id)
+
+            message.deleted_for_all = True
+
+        else:
+            if message.sender == request.user:
+                message.deleted_for_sender = True
+            else:
+                message.deleted_for_receiver = True
+
+        message.save()
+
+    return redirect('chat_detail', chat_id=chat.id)
+
+
+@login_required
+def edit_message(request, message_id):
+    message = get_object_or_404(ChatMessage, id=message_id)
+    chat = message.chat
+
+    if message.sender != request.user:
+        messages.error(request, 'Редактировать можно только своё сообщение')
+        return redirect('chat_detail', chat_id=chat.id)
+
+    if request.method == 'POST':
+        content = request.POST.get('content', '').strip()
+
+        if content:
+            message.content = content
+            message.edited_at = timezone.now()
+            message.save(update_fields=['content', 'edited_at'])
+
+    return redirect('chat_detail', chat_id=chat.id)

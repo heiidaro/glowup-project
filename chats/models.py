@@ -51,10 +51,23 @@ class ChatMessage(models.Model):
         null=True
     )
 
+    reply_to = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='reply_to_id',
+        related_name='replies'
+    )
+
     content = models.TextField(db_column='content')
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    deleted_for_sender = models.BooleanField(default=False)
+    deleted_for_receiver = models.BooleanField(default=False)
+    deleted_for_all = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'messages'
