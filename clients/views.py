@@ -17,6 +17,7 @@ import json
 from masters.models import MasterProfile
 from django.contrib.auth import update_session_auth_hash
 from calendar import monthrange
+from chats.models import ChatMessage
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -194,6 +195,17 @@ def client_dashboard(request):
         status='active'
     ).order_by('date', 'time')[:5]
 
+    recent_messages = ChatMessage.objects.filter(
+        chat__client=client_profile
+    ).exclude(
+        sender=request.user
+    ).select_related(
+        'chat',
+        'sender',
+        'chat__master',
+        'chat__master__user'
+    ).order_by('-created_at')[:3]
+
     context = {
         'client': client_profile,
         'user': request.user,
@@ -208,6 +220,7 @@ def client_dashboard(request):
         'current_year': current_year,
         'month_name': get_month_name(current_month),
         'upcoming_bookings': upcoming_bookings,
+        'recent_messages': recent_messages,
     }
 
     return render(request, 'clients/dashboard.html', context)
