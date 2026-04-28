@@ -51,7 +51,7 @@
             </div>
 
             <div class="hero-actions">
-                <button class="btn-light" onclick="alert('Чат будет добавлен позже')">Написать</button>
+                <a href="{% url 'start_chat_with_master' master.id %}" class="btn-light">Написать</a>
                 <a href="{% url 'book_master' master.id %}" class="btn-dark">Записаться</a>
             </div>
         </div>

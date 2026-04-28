@@ -881,3 +881,40 @@ def reschedule_booking(request, booking_id):
             messages.error(request, 'Укажите новую дату и время')
 
     return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+
+
+@login_required
+def client_masters(request):
+    if request.user.role != 'client':
+        messages.error(request, 'У вас нет доступа')
+        return redirect('home')
+
+    client_profile = request.user.client_profile
+
+    bookings = Booking.objects.filter(
+        client=client_profile
+    ).select_related(
+        'master',
+        'master__user'
+    ).order_by('-date', '-time')
+
+    masters_data = {}
+
+    for booking in bookings:
+        master = booking.master
+
+        if master.id not in masters_data:
+            masters_data[master.id] = {
+                'master': master,
+                'last_booking': booking,
+                'total_bookings': 1,
+            }
+        else:
+            masters_data[master.id]['total_bookings'] += 1
+
+    context = {
+        'masters_data': list(masters_data.values()),
+        'client': client_profile,
+    }
+
+    return render(request, 'clients/my_masters.html', context)

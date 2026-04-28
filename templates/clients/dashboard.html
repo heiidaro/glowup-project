@@ -36,7 +36,7 @@
     <div class="dashboard-card masters-card">
         <div class="card-header">
             <h3>Мои мастера</h3>
-            <a href="#" class="view-all">Все</a>
+            <a href="{% url 'client_masters' %}" class="view-all">Все</a>
         </div>
         <div class="card-content">
             {% if recent_masters %}

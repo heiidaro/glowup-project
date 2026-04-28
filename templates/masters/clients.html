@@ -4,126 +4,241 @@
 {% block title %}Мои клиенты{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Мои клиенты</h1>
-    <p>Все клиенты, которые записывались к вам</p>
-</div>
+<div class="clients-page">
+    <div class="page-header clients-header">
+        <div>
+            <h1>Мои клиенты</h1>
+            <p>Клиенты, которые ранее записывались к вам</p>
+        </div>
 
-{% if clients %}
-    <div class="clients-grid">
+        <div class="clients-total">
+            <strong>{{ clients|length }}</strong>
+            <span>всего клиентов</span>
+        </div>
+    </div>
+
+    {% if clients %}
+    <div class="clients-list">
         {% for item in clients %}
-        <div class="client-card">
-            <div class="client-avatar large">
-                {% if item.client.avatar %}
-                    <img src="{{ item.client.avatar.url }}" alt="">
-                {% else %}
-                    <div class="avatar-placeholder">
-                        {{ item.client.full_name|first|default:"К" }}
+        <article class="client-card">
+            <div class="client-main">
+                <div class="client-avatar">
+                    {% if item.client.avatar %}
+                        <img src="{{ item.client.avatar.url }}" alt="">
+                    {% else %}
+                        <div class="avatar-placeholder">
+                            {{ item.client.full_name|first|default:"К" }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="client-info">
+                    <h3>{{ item.client.full_name|default:"Клиент" }}</h3>
+
+                    <div class="client-contacts">
+                        <span><i class="fas fa-phone"></i>{{ item.client.user.phone|default:"не указан" }}</span>
+                        <span><i class="fas fa-envelope"></i>{{ item.client.user.email|default:"не указан" }}</span>
                     </div>
-                {% endif %}
+                </div>
             </div>
-            <div class="client-info">
-                <h3>{{ item.client.full_name|default:"Клиент" }}</h3>
-                <p class="client-phone"><i class="fas fa-phone"></i> {{ item.client.user.phone|default:"не указан" }}</p>
-                <p class="client-email"><i class="fas fa-envelope"></i> {{ item.client.user.email }}</p>
-            </div>
+
             <div class="client-stats">
-                <div class="stat">
-                    <span class="stat-value">{{ item.total_bookings }}</span>
-                    <span class="stat-label">записей</span>
+                <div>
+                    <strong>{{ item.total_bookings }}</strong>
+                    <span>записей</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-value">{{ item.total_spent|floatformat:0 }} ₽</span>
-                    <span class="stat-label">потрачено</span>
+
+                <div>
+                    <strong>{{ item.total_spent|floatformat:0 }} ₽</strong>
+                    <span>сумма</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-value">{{ item.last_booking.date|date:"d.m.Y" }}</span>
-                    <span class="stat-label">последняя запись</span>
+
+                <div>
+                    <strong>{{ item.last_booking.date|date:"d.m.Y" }}</strong>
+                    <span>последняя запись</span>
                 </div>
             </div>
+
             <div class="client-actions">
-                <button class="btn-chat" onclick="openChat({{ item.client.id }})">
-                    <i class="fas fa-comment"></i> Написать
+                    <a class="btn-light" href="{% url 'start_chat_with_client' item.client.id %}">
+                    <i class="fas fa-comment"></i>
+                    Написать
                 </button>
-                <a href="{% url 'master_bookings' %}?client={{ item.client.id }}" class="btn-profile">
-                    <i class="fas fa-calendar"></i> Записи
+
+                <a href="{% url 'master_bookings' %}?client={{ item.client.id }}" class="btn-dark">
+                    <i class="fas fa-calendar"></i>
+                    Записи
                 </a>
             </div>
-        </div>
+        </article>
         {% endfor %}
     </div>
-{% else %}
-    <div class="empty-state">
-        <i class="fas fa-users"></i>
-        <p>У вас пока нет клиентов</p>
+    {% else %}
+    <div class="empty-clients">
+        <div class="empty-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <h3>Клиентов пока нет</h3>
+        <p>Когда клиенты начнут записываться к вам, они появятся на этой странице.</p>
     </div>
-{% endif %}
+    {% endif %}
+</div>
 
 <style>
-.clients-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 24px;
+.clients-page {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.clients-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.clients-header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 6px;
+}
+
+.clients-header p {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.clients-total {
+    min-width: 150px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,.04);
+}
+
+.clients-total strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 600;
+    color: #202020;
+}
+
+.clients-total span {
+    color: #6B7280;
+    font-size: 12px;
+}
+
+.clients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
 .client-card {
-    background: var(--white);
-    border: 1px solid var(--light);
-    border-radius: 12px;
-    padding: 20px;
-    transition: box-shadow 0.3s;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr auto;
+    gap: 18px;
+    align-items: center;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+    transition: .22s ease;
 }
 
 .client-card:hover {
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(0,0,0,.07);
 }
 
-.client-avatar.large {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 15px;
+.client-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.client-avatar {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #202020;
+    color: white;
+}
+
+.client-avatar img,
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 600;
 }
 
 .client-info {
-    text-align: center;
-    margin-bottom: 15px;
+    min-width: 0;
 }
 
 .client-info h3 {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
+    color: #202020;
     margin-bottom: 8px;
 }
 
-.client-info p {
+.client-contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.client-contacts span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #6B7280;
     font-size: 13px;
-    color: var(--gray);
-    margin: 5px 0;
+    word-break: break-word;
 }
 
 .client-stats {
-    display: flex;
-    justify-content: space-around;
-    padding: 15px 0;
-    border-top: 1px solid var(--light);
-    border-bottom: 1px solid var(--light);
-    margin-bottom: 15px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
 }
 
-.stat {
+.client-stats div {
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    padding: 12px;
     text-align: center;
 }
 
-.stat-value {
+.client-stats strong {
     display: block;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-    color: var(--dark);
+    color: #202020;
+    margin-bottom: 4px;
 }
 
-.stat-label {
+.client-stats span {
+    color: #6B7280;
     font-size: 12px;
-    color: var(--gray);
 }
 
 .client-actions {
@@ -131,35 +246,105 @@
     gap: 10px;
 }
 
-.btn-chat, .btn-profile {
-    flex: 1;
-    padding: 8px;
-    border-radius: 6px;
-    text-align: center;
-    cursor: pointer;
-    font-size: 14px;
-    text-decoration: none;
-}
-
-.btn-chat {
-    background: var(--light);
-    color: var(--dark);
+.btn-light,
+.btn-dark {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 12px;
     border: none;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: .2s ease;
+    white-space: nowrap;
 }
 
-.btn-chat:hover {
-    background: var(--dark);
+.btn-light {
+    background: #F3F4F6;
+    color: #202020;
+}
+
+.btn-dark {
+    background: #202020;
     color: white;
 }
 
-.btn-profile {
-    background: var(--dark);
-    color: white;
-    display: inline-block;
+.btn-light:hover,
+.btn-dark:hover {
+    transform: translateY(-2px);
 }
 
-.btn-profile:hover {
-    background: var(--gray);
+.empty-clients {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 22px;
+    padding: 60px 24px;
+    text-align: center;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+}
+
+.empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #F7F7F5;
+    color: #202020;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 16px;
+}
+
+.empty-clients h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 8px;
+}
+
+.empty-clients p {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+    .client-card {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .client-actions {
+        width: 100%;
+    }
+
+    .btn-light,
+    .btn-dark {
+        flex: 1;
+    }
+}
+
+@media (max-width: 700px) {
+    .clients-header {
+        flex-direction: column;
+    }
+
+    .clients-total {
+        width: 100%;
+    }
+
+    .client-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .client-actions {
+        flex-direction: column;
+    }
 }
 </style>
 {% endblock %}

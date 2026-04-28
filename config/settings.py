@@ -49,10 +49,10 @@ INSTALLED_APPS = [
     'bookings',
     'core',
     'posts',
-    'chat',
     'notifications',
     'reviews',
     'cache_cleaner',
+    'chats',
 
     'clients.apps.ClientsConfig',
     'masters.apps.MastersConfig',
