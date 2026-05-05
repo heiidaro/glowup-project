@@ -56,6 +56,7 @@ def register_view(request):
 def login_view(request):
     if request.method == "POST":
         form = LoginForm(request.POST)
+
         if form.is_valid():
             contact = form.cleaned_data["contact"]
             password = form.cleaned_data["password"]
@@ -65,14 +66,33 @@ def login_view(request):
             else:
                 user = User.objects.filter(phone=contact).first()
 
-            if user and user.check_password(password):
+            if not user:
+                form.add_error(None, "Неверные данные")
+                return render(request, "accounts/login.html", {"form": form})
+
+            if not user.is_active:
+                form.add_error(
+                    None,
+                    "Ваш аккаунт заблокирован администратором. Обратитесь в поддержку."
+                )
+                return render(request, "accounts/login.html", {"form": form})
+
+            if getattr(user, "is_deleted", False):
+                form.add_error(
+                    None,
+                    "Аккаунт деактивирован. Обратитесь в поддержку."
+                )
+                return render(request, "accounts/login.html", {"form": form})
+
+            if user.check_password(password):
                 login(request, user)
 
-                # Перенаправление в зависимости от роли
                 if user.role == 'client':
                     return redirect('client_dashboard')
                 elif user.role == 'master':
                     return redirect('master_dashboard')
+                elif user.role == 'admin':
+                    return redirect('admin_dashboard')
                 else:
                     return redirect('home')
 
@@ -128,6 +148,8 @@ def verify_view(request):
                     return redirect('client_dashboard')
                 elif user.role == 'master':
                     return redirect('master_dashboard')
+                elif user.role == 'admin':
+                    return redirect('admin_dashboard')
                 else:
                     return redirect('home')
 

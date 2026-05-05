@@ -1,0 +1,214 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Обращение #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Обращение #{{ ticket.id }}</h1>
+        <p>{{ ticket.subject }}</p>
+    </div>
+
+    <a class="admin-btn light" href="{% url 'admin_support' %}">
+        <i class="fas fa-arrow-left"></i>
+        Назад
+    </a>
+</div>
+
+<div class="support-detail-layout">
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3>Переписка</h3>
+
+            {% if ticket.status == 'open' %}
+                <span class="badge yellow">Открыто</span>
+            {% elif ticket.status == 'in_progress' %}
+                <span class="badge">В работе</span>
+            {% elif ticket.status == 'closed' %}
+                <span class="badge green">Закрыто</span>
+            {% endif %}
+        </div>
+
+        <div class="admin-card-body">
+            <div class="support-chat">
+                {% for item in ticket_messages %}
+                <div class="support-message {% if item.sender == request.user %}admin{% else %}user{% endif %}">
+                    <div class="support-message-head">
+                        <strong>
+                            {% if item.sender == request.user %}
+                                Администратор
+                            {% elif item.sender %}
+                                {{ item.sender.email|default:item.sender.phone|default:"Пользователь" }}
+                            {% else %}
+                                Пользователь
+                            {% endif %}
+                        </strong>
+
+                        <span>{{ item.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+
+                    <p>{{ item.message }}</p>
+                </div>
+                {% empty %}
+                <p class="empty-row">Сообщений пока нет</p>
+                {% endfor %}
+            </div>
+
+            {% if ticket.status != 'closed' %}
+            <form method="POST" class="support-reply-form">
+                {% csrf_token %}
+
+                <textarea class="admin-textarea" name="message" placeholder="Введите ответ пользователю" required></textarea>
+
+                <button class="admin-btn" type="submit">
+                    <i class="fas fa-paper-plane"></i>
+                    Ответить
+                </button>
+            </form>
+            {% else %}
+            <p class="empty-row">Обращение закрыто. Чтобы ответить, откройте его снова.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3>Информация</h3>
+        </div>
+
+        <div class="admin-card-body">
+            <div class="ticket-info">
+                <div>
+                    <span>Пользователь</span>
+                    <strong>
+                        {% if ticket.user %}
+                            {{ ticket.user.email|default:ticket.user.phone|default:"Пользователь" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Приоритет</span>
+                    <strong>{{ ticket.get_priority_display }}</strong>
+                </div>
+
+                <div>
+                    <span>Создано</span>
+                    <strong>{{ ticket.created_at|date:"d.m.Y H:i" }}</strong>
+                </div>
+
+                <div>
+                    <span>Обновлено</span>
+                    <strong>{{ ticket.updated_at|date:"d.m.Y H:i" }}</strong>
+                </div>
+            </div>
+
+            <div class="admin-actions" style="margin-top: 16px;">
+                {% if ticket.status != 'closed' %}
+                <form method="POST" action="{% url 'admin_support_action' ticket.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="close">
+                    <button class="admin-btn green" type="submit">Закрыть обращение</button>
+                </form>
+                {% else %}
+                <form method="POST" action="{% url 'admin_support_action' ticket.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="open">
+                    <button class="admin-btn yellow" type="submit">Открыть снова</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.support-detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+}
+
+.support-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.support-message {
+    max-width: 75%;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+}
+
+.support-message.user {
+    background: #F7F7F5;
+}
+
+.support-message.admin {
+    margin-left: auto;
+    background: #202020;
+    color: white;
+    border-color: #202020;
+}
+
+.support-message-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+
+.support-message-head strong {
+    font-size: 13px;
+}
+
+.support-message-head span {
+    font-size: 11px;
+    opacity: .7;
+}
+
+.support-message p {
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.support-reply-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ticket-info {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+}
+
+.ticket-info span {
+    display: block;
+    color: #6B7280;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.ticket-info strong {
+    font-size: 14px;
+    color: #202020;
+}
+
+@media (max-width: 1000px) {
+    .support-detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .support-message {
+        max-width: 100%;
+    }
+}
+</style>
+{% endblock %}

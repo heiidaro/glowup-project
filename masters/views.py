@@ -70,14 +70,20 @@ def geocode_yandex_address(address: str):
 def masters_list(request):
     """Список всех мастеров"""
 
-    masters = MasterProfile.objects.all().select_related('user')
+    masters = MasterProfile.objects.filter(
+        is_approved=True,
+        user__is_active=True
+    ).select_related('user')
 
     masters_data = []
     masters_map_data = []
 
     for master in masters:
         portfolio = list(
-            Portfolio.objects.filter(master=master).order_by('-created_at')[:3]
+            Portfolio.objects.filter(
+                master=master,
+                is_hidden=False
+            ).order_by('-created_at')[:3]
         )
 
         try:

@@ -1,0 +1,155 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Жалобы{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Жалобы</h1>
+        <p>Жалобы на пользователей, мастеров, посты и отзывы</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Список жалоб</h3>
+
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Поиск">
+
+            <select class="admin-select" name="status">
+                <option value="">Все статусы</option>
+                <option value="new" {% if status == 'new' %}selected{% endif %}>Новые</option>
+                <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>В работе</option>
+                <option value="resolved" {% if status == 'resolved' %}selected{% endif %}>Решённые</option>
+                <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Отклонённые</option>
+            </select>
+
+            <select class="admin-select" name="type">
+                <option value="">Все типы</option>
+                <option value="master" {% if complaint_type == 'master' %}selected{% endif %}>На мастера</option>
+                <option value="client" {% if complaint_type == 'client' %}selected{% endif %}>На клиента</option>
+                <option value="post" {% if complaint_type == 'post' %}selected{% endif %}>На пост</option>
+                <option value="review" {% if complaint_type == 'review' %}selected{% endif %}>На отзыв</option>
+                <option value="other" {% if complaint_type == 'other' %}selected{% endif %}>Другое</option>
+            </select>
+
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Тип</th>
+                    <th>Кто пожаловался</th>
+                    <th>Объект жалобы</th>
+                    <th>Причина</th>
+                    <th>Статус</th>
+                    <th>Дата</th>
+                    <th>Решение</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for complaint in complaints %}
+                <tr>
+                    <td>{{ complaint.id }}</td>
+
+                    <td>
+                        <span class="badge">{{ complaint.get_complaint_type_display }}</span>
+                    </td>
+
+                    <td>
+                        {% if complaint.reporter %}
+                            {{ complaint.reporter.email|default:complaint.reporter.phone|default:"Пользователь" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if complaint.master %}
+                            Мастер: {{ complaint.master.display_name }}
+                        {% elif complaint.post %}
+                            Пост #{{ complaint.post.id }}
+                        {% elif complaint.review %}
+                            Отзыв #{{ complaint.review.id }}
+                        {% elif complaint.target_user %}
+                            Пользователь: {{ complaint.target_user.email|default:complaint.target_user.phone }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>{{ complaint.reason|truncatechars:100 }}</td>
+
+                    <td>
+                        {% if complaint.status == 'new' %}
+                            <span class="badge yellow">Новая</span>
+                        {% elif complaint.status == 'in_progress' %}
+                            <span class="badge">В работе</span>
+                        {% elif complaint.status == 'resolved' %}
+                            <span class="badge green">Решена</span>
+                        {% elif complaint.status == 'rejected' %}
+                            <span class="badge red">Отклонена</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ complaint.created_at|date:"d.m.Y H:i" }}</td>
+
+                    <td>
+                        <form method="POST" action="{% url 'admin_complaint_action' complaint.id %}" class="complaint-action-form">
+                            {% csrf_token %}
+
+                            <textarea class="admin-textarea" name="admin_comment" placeholder="Комментарий администратора">{{ complaint.admin_comment|default:'' }}</textarea>
+
+                            <div class="admin-actions">
+                                <button class="admin-btn light" name="action" value="in_progress" type="submit">В работу</button>
+                                <button class="admin-btn green" name="action" value="resolved" type="submit">Решена</button>
+                                <button class="admin-btn red" name="action" value="rejected" type="submit">Отклонить</button>
+
+                                {% if complaint.target_user %}
+                                    <button class="admin-btn red" name="action" value="block_target" type="submit">Блок пользователя</button>
+                                {% endif %}
+
+                                {% if complaint.master %}
+                                    <button class="admin-btn yellow" name="action" value="hide_master" type="submit">Скрыть мастера</button>
+                                {% endif %}
+
+                                {% if complaint.post %}
+                                    <button class="admin-btn yellow" name="action" value="hide_post" type="submit">Скрыть пост</button>
+                                {% endif %}
+
+                                {% if complaint.review %}
+                                    <button class="admin-btn yellow" name="action" value="hide_review" type="submit">Скрыть отзыв</button>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-row">Жалоб пока нет</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.complaint-action-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 360px;
+}
+
+.complaint-action-form .admin-textarea {
+    min-height: 62px;
+}
+</style>
+{% endblock %}

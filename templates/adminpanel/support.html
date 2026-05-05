@@ -1,0 +1,124 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Поддержка{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Поддержка</h1>
+        <p>Обращения пользователей и ответы администратора</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Обращения</h3>
+
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Тема, email или телефон">
+
+            <select class="admin-select" name="status">
+                <option value="">Все статусы</option>
+                <option value="open" {% if status == 'open' %}selected{% endif %}>Открытые</option>
+                <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>В работе</option>
+                <option value="closed" {% if status == 'closed' %}selected{% endif %}>Закрытые</option>
+            </select>
+
+            <select class="admin-select" name="priority">
+                <option value="">Любой приоритет</option>
+                <option value="low" {% if priority == 'low' %}selected{% endif %}>Низкий</option>
+                <option value="normal" {% if priority == 'normal' %}selected{% endif %}>Обычный</option>
+                <option value="high" {% if priority == 'high' %}selected{% endif %}>Высокий</option>
+            </select>
+
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Пользователь</th>
+                    <th>Тема</th>
+                    <th>Статус</th>
+                    <th>Приоритет</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td>{{ ticket.id }}</td>
+
+                    <td>
+                        {% if ticket.user %}
+                            {{ ticket.user.email|default:ticket.user.phone|default:"Пользователь" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <a href="{% url 'admin_support_detail' ticket.id %}" style="color:#202020;font-weight:600;text-decoration:none;">
+                            {{ ticket.subject }}
+                        </a>
+                    </td>
+
+                    <td>
+                        {% if ticket.status == 'open' %}
+                            <span class="badge yellow">Открыто</span>
+                        {% elif ticket.status == 'in_progress' %}
+                            <span class="badge">В работе</span>
+                        {% elif ticket.status == 'closed' %}
+                            <span class="badge green">Закрыто</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if ticket.priority == 'high' %}
+                            <span class="badge red">Высокий</span>
+                        {% elif ticket.priority == 'normal' %}
+                            <span class="badge">Обычный</span>
+                        {% else %}
+                            <span class="badge green">Низкий</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ ticket.created_at|date:"d.m.Y H:i" }}</td>
+
+                    <td>
+                        <div class="admin-actions">
+                            <a class="admin-btn light" href="{% url 'admin_support_detail' ticket.id %}">
+                                Открыть
+                            </a>
+
+                            {% if ticket.status != 'closed' %}
+                            <form method="POST" action="{% url 'admin_support_action' ticket.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="close">
+                                <button class="admin-btn green" type="submit">Закрыть</button>
+                            </form>
+                            {% else %}
+                            <form method="POST" action="{% url 'admin_support_action' ticket.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="open">
+                                <button class="admin-btn yellow" type="submit">Открыть снова</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-row">Обращений пока нет</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

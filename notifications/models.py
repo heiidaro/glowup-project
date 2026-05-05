@@ -8,6 +8,7 @@ class Notification(models.Model):
         ('response', 'Отклик на пост'),
         ('response_accepted', 'Отклик принят'),
         ('response_rejected', 'Отклик отклонен'),
+        ('system', 'Системное уведомление'),
     ]
 
     user = models.ForeignKey(

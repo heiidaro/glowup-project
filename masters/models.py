@@ -51,6 +51,7 @@ class Portfolio(models.Model):
     image = models.ImageField(upload_to='portfolio/')
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'masters_portfolio'

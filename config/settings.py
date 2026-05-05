@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'reviews',
     'cache_cleaner',
     'chats',
+    'adminpanel',
 
     'clients.apps.ClientsConfig',
     'masters.apps.MastersConfig',

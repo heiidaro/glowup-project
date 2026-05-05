@@ -1,0 +1,141 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Портфолио{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Портфолио мастеров</h1>
+        <p>Проверка, скрытие и удаление загруженных работ мастеров</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Работы мастеров</h3>
+
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Мастер или описание">
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+
+    <div class="admin-card-body">
+        <div class="portfolio-admin-grid">
+            {% for item in portfolio %}
+            <div class="portfolio-admin-card">
+                <div class="portfolio-image">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="">
+                    {% else %}
+                        <div class="portfolio-empty">Нет изображения</div>
+                    {% endif %}
+                </div>
+
+                <div class="portfolio-info">
+                    <h4>{{ item.master.display_name|default:"Мастер" }}</h4>
+                    <p>{{ item.description|default:"Описание не добавлено"|truncatechars:90 }}</p>
+
+                    <div class="portfolio-meta">
+                        <span>{{ item.created_at|date:"d.m.Y" }}</span>
+
+                        {% if item.is_hidden %}
+                            <span class="badge yellow">Скрыто</span>
+                        {% else %}
+                            <span class="badge green">Видно</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="admin-actions">
+                        {% if item.is_hidden %}
+                        <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="restore">
+                            <button class="admin-btn green" type="submit">Вернуть</button>
+                        </form>
+                        {% else %}
+                        <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="hide">
+                            <button class="admin-btn yellow" type="submit">Скрыть</button>
+                        </form>
+                        {% endif %}
+
+                        <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <button class="admin-btn red" type="submit">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-row">Работ в портфолио пока нет</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+.portfolio-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.portfolio-admin-card {
+    border: 1px solid #E5E7EB;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #FFFFFF;
+}
+
+.portfolio-image {
+    height: 190px;
+    background: #F7F7F5;
+}
+
+.portfolio-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.portfolio-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.portfolio-info {
+    padding: 14px;
+}
+
+.portfolio-info h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.portfolio-info p {
+    color: #6B7280;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.portfolio-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    color: #6B7280;
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+</style>
+{% endblock %}

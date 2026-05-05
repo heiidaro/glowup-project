@@ -27,6 +27,7 @@ urlpatterns = [
     path('client/', include('clients.urls')),
     path('master/', include('masters.urls')),
     path('chats/', include('chats.urls')),
+    path('panel/', include('adminpanel.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,127 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Мастера{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Мастера</h1>
+        <p>Проверка профилей мастеров, блокировка и редактирование публичной информации</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Список мастеров</h3>
+
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Поиск">
+
+            <select class="admin-select" name="status">
+                <option value="">Любой статус</option>
+                <option value="approved" {% if status == 'approved' %}selected{% endif %}>Подтверждённые</option>
+                <option value="pending" {% if status == 'pending' %}selected{% endif %}>На проверке</option>
+            </select>
+
+            <select class="admin-select" name="active">
+                <option value="">Любая активность</option>
+                <option value="active" {% if active == 'active' %}selected{% endif %}>Активные</option>
+                <option value="blocked" {% if active == 'blocked' %}selected{% endif %}>Заблокированные</option>
+            </select>
+
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Мастер</th>
+                    <th>Контакты</th>
+                    <th>Адрес</th>
+                    <th>Модерация</th>
+                    <th>Аккаунт</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for master in masters %}
+                <tr>
+                    <td>
+                        <strong>{{ master.display_name|default:"Мастер" }}</strong><br>
+                        <span style="color:#6B7280;font-size:12px;">ID {{ master.id }}</span>
+                    </td>
+                    <td>
+                        {{ master.user.email|default:"—" }}<br>
+                        <span style="color:#6B7280;font-size:12px;">{{ master.user.phone|default:"—" }}</span>
+                    </td>
+                    <td>{{ master.address_text|default:"—" }}</td>
+                    <td>
+                        {% if master.is_approved %}
+                            <span class="badge green">Подтверждён</span>
+                        {% else %}
+                            <span class="badge yellow">На проверке</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if master.user.is_active %}
+                            <span class="badge green">Активен</span>
+                        {% else %}
+                            <span class="badge red">Заблокирован</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="admin-actions">
+                            <form method="POST" action="{% url 'admin_master_action' master.id %}">
+                                {% csrf_token %}
+                                {% if master.is_approved %}
+                                    <input type="hidden" name="action" value="hide">
+                                    <button class="admin-btn yellow" type="submit">Скрыть</button>
+                                {% else %}
+                                    <input type="hidden" name="action" value="approve">
+                                    <button class="admin-btn green" type="submit">Подтвердить</button>
+                                {% endif %}
+                            </form>
+
+                            <form method="POST" action="{% url 'admin_master_action' master.id %}">
+                                {% csrf_token %}
+                                {% if master.user.is_active %}
+                                    <input type="hidden" name="action" value="block">
+                                    <button class="admin-btn red" type="submit">Блок</button>
+                                {% else %}
+                                    <input type="hidden" name="action" value="unblock">
+                                    <button class="admin-btn green" type="submit">Разблок</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="6" style="background:#FAFAFA;">
+                        <form method="POST" action="{% url 'admin_master_action' master.id %}" class="admin-form-grid">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="edit_public">
+
+                            <input class="admin-input" type="text" name="display_name" value="{{ master.display_name }}" placeholder="Имя / студия">
+                            <input class="admin-input" type="text" name="address_text" value="{{ master.address_text }}" placeholder="Адрес">
+                            <input class="admin-input" type="text" name="bio" value="{{ master.bio|default:'' }}" placeholder="О себе">
+
+                            <button class="admin-btn light" type="submit">
+                                Сохранить публичные данные
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-row">Мастеров не найдено</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

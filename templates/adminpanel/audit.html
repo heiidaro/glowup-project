@@ -1,0 +1,50 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Аудит{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Журнал действий</h1>
+        <p>История действий администраторов на платформе</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Последние действия</h3>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Администратор</th>
+                    <th>Действие</th>
+                    <th>Объект</th>
+                    <th>ID объекта</th>
+                    <th>Комментарий</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.created_at|date:"d.m.Y H:i" }}</td>
+                    <td>{{ log.admin_user.email|default:log.admin_user.phone|default:"—" }}</td>
+                    <td><span class="badge">{{ log.action }}</span></td>
+                    <td>{{ log.object_type }}</td>
+                    <td>{{ log.object_id|default:"—" }}</td>
+                    <td>{{ log.comment|default:"—"|truncatechars:100 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-row">Логов пока нет</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

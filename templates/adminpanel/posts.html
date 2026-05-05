@@ -1,0 +1,123 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Посты клиентов{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Посты клиентов</h1>
+        <p>Модерация заявок клиентов, скрытие и восстановление постов</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Посты</h3>
+
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Поиск по тексту или клиенту">
+
+            <select class="admin-select" name="status">
+                <option value="">Все</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
+                <option value="hidden" {% if status == 'hidden' %}selected{% endif %}>Скрытые</option>
+            </select>
+
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Клиент</th>
+                    <th>Описание</th>
+                    <th>Теги</th>
+                    <th>Дата услуги</th>
+                    <th>Бюджет</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for post in posts %}
+                <tr>
+                    <td>{{ post.id }}</td>
+                    <td>{{ post.client.full_name|default:"Клиент" }}</td>
+                    <td>
+                        {{ post.description|truncatechars:120 }}
+
+                        {% if post.image %}
+                            <br>
+                            <a href="{{ post.image.url }}" target="_blank" style="font-size:12px;color:#202020;">Открыть фото</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for tag in post.tags.all %}
+                            <span class="badge">{{ tag.name }}</span>
+                        {% empty %}
+                            {% if post.service_category %}
+                                <span class="badge">{{ post.service_category }}</span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {{ post.preferred_date|date:"d.m.Y" }}
+                        {% if post.preferred_time %}
+                            <br>
+                            <span style="color:#6B7280;font-size:12px;">{{ post.preferred_time|time:"H:i" }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if post.budget %}
+                            {{ post.budget|floatformat:0 }} ₽
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if post.is_active %}
+                            <span class="badge green">Активен</span>
+                        {% else %}
+                            <span class="badge yellow">Скрыт</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="admin-actions">
+                            {% if post.is_active %}
+                            <form method="POST" action="{% url 'admin_post_action' post.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="hide">
+                                <button class="admin-btn yellow" type="submit">Скрыть</button>
+                            </form>
+                            {% else %}
+                            <form method="POST" action="{% url 'admin_post_action' post.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="restore">
+                                <button class="admin-btn green" type="submit">Вернуть</button>
+                            </form>
+                            {% endif %}
+
+                            <form method="POST" action="{% url 'admin_post_action' post.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <button class="admin-btn red" type="submit">Удалить</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-row">Постов не найдено</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Записи{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>Записи</h1>
+        <p>Просмотр, фильтрация и ручное управление записями клиентов</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3>Все записи</h3>
+
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Клиент, мастер или услуга">
+
+            <select class="admin-select" name="status">
+                <option value="">Любой статус</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
+                <option value="completed" {% if status == 'completed' %}selected{% endif %}>Завершённые</option>
+                <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Отменённые</option>
+                <option value="expired" {% if status == 'expired' %}selected{% endif %}>Просроченные</option>
+            </select>
+
+            <input class="admin-input" type="date" name="date_from" value="{{ date_from }}">
+            <input class="admin-input" type="date" name="date_to" value="{{ date_to }}">
+
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Клиент</th>
+                    <th>Мастер</th>
+                    <th>Услуга</th>
+                    <th>Дата и время</th>
+                    <th>Стоимость</th>
+                    <th>Статус</th>
+                    <th>Управление</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for booking in bookings %}
+                <tr>
+                    <td>{{ booking.id }}</td>
+                    <td>{{ booking.client.full_name|default:"Клиент" }}</td>
+                    <td>{{ booking.master.display_name|default:"Мастер" }}</td>
+                    <td>
+                        <strong>{{ booking.service|default:"Услуга" }}</strong>
+                        {% if booking.client_note %}
+                            <br>
+                            <span style="color:#6B7280;font-size:12px;">{{ booking.client_note|truncatechars:70 }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ booking.date|date:"d.m.Y" }}<br>
+                        <span style="color:#6B7280;font-size:12px;">
+                            {{ booking.time|time:"H:i" }}
+                            {% if booking.end_time %} — {{ booking.end_time|time:"H:i" }}{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ booking.price|floatformat:0 }} ₽</td>
+                    <td>
+                        {% if booking.status == 'active' %}
+                            <span class="badge green">Активная</span>
+                        {% elif booking.status == 'completed' %}
+                            <span class="badge">Завершена</span>
+                        {% elif booking.status == 'cancelled' %}
+                            <span class="badge red">Отменена</span>
+                        {% elif booking.status == 'expired' %}
+                            <span class="badge yellow">Просрочена</span>
+                        {% else %}
+                            <span class="badge">{{ booking.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="admin-actions">
+                            <form method="POST" action="{% url 'admin_booking_action' booking.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="change_status">
+
+                                <select class="admin-select" name="status">
+                                    <option value="active" {% if booking.status == 'active' %}selected{% endif %}>Активная</option>
+                                    <option value="completed" {% if booking.status == 'completed' %}selected{% endif %}>Завершена</option>
+                                    <option value="cancelled" {% if booking.status == 'cancelled' %}selected{% endif %}>Отменена</option>
+                                    <option value="expired" {% if booking.status == 'expired' %}selected{% endif %}>Просрочена</option>
+                                </select>
+
+                                <button class="admin-btn light" type="submit">ОК</button>
+                            </form>
+
+                            {% if booking.status != 'cancelled' %}
+                            <form method="POST" action="{% url 'admin_booking_action' booking.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="cancel">
+                                <button class="admin-btn red" type="submit">Отменить</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-row">Записей не найдено</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
