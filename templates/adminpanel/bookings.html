@@ -22,7 +22,6 @@
                 <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
                 <option value="completed" {% if status == 'completed' %}selected{% endif %}>Завершённые</option>
                 <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Отменённые</option>
-                <option value="expired" {% if status == 'expired' %}selected{% endif %}>Просроченные</option>
             </select>
 
             <input class="admin-input" type="date" name="date_from" value="{{ date_from }}">
@@ -75,8 +74,6 @@
                             <span class="badge">Завершена</span>
                         {% elif booking.status == 'cancelled' %}
                             <span class="badge red">Отменена</span>
-                        {% elif booking.status == 'expired' %}
-                            <span class="badge yellow">Просрочена</span>
                         {% else %}
                             <span class="badge">{{ booking.status }}</span>
                         {% endif %}
@@ -91,7 +88,6 @@
                                     <option value="active" {% if booking.status == 'active' %}selected{% endif %}>Активная</option>
                                     <option value="completed" {% if booking.status == 'completed' %}selected{% endif %}>Завершена</option>
                                     <option value="cancelled" {% if booking.status == 'cancelled' %}selected{% endif %}>Отменена</option>
-                                    <option value="expired" {% if booking.status == 'expired' %}selected{% endif %}>Просрочена</option>
                                 </select>
 
                                 <button class="admin-btn light" type="submit">ОК</button>

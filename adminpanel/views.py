@@ -37,8 +37,31 @@ def write_admin_log(request, action, object_type, object_id=None, comment=''):
     )
 
 
+def sync_past_bookings():
+    today = timezone.localdate()
+    now_time = timezone.localtime().time()
+
+    past_bookings = Booking.objects.filter(
+        status='active',
+        date__lt=today
+    )
+
+    today_finished_bookings = Booking.objects.filter(
+        status='active',
+        date=today,
+        end_time__isnull=False,
+        end_time__lt=now_time
+    )
+
+    updated_1 = past_bookings.update(status='completed')
+    updated_2 = today_finished_bookings.update(status='completed')
+
+    return updated_1 + updated_2
+
+
 @admin_required
 def admin_dashboard(request):
+    sync_past_bookings()
     today = timezone.localdate()
 
     stats = {
@@ -323,6 +346,7 @@ def admin_master_action(request, master_id):
 
 @admin_required
 def admin_bookings(request):
+    sync_past_bookings()
     bookings = Booking.objects.select_related(
         'client', 'master').order_by('-created_at')
 
@@ -365,7 +389,7 @@ def admin_booking_action(request, booking_id):
 
         if action == 'change_status':
             new_status = request.POST.get('status')
-            if new_status in ['active', 'completed', 'cancelled', 'expired']:
+            if new_status in ['active', 'completed', 'cancelled']:
                 booking.status = new_status
                 booking.save(update_fields=['status'])
                 write_admin_log(request, 'change_booking_status',
@@ -687,10 +711,34 @@ def admin_notifications(request):
 @admin_required
 def admin_audit(request):
     logs = AdminAuditLog.objects.select_related(
-        'admin_user').order_by('-created_at')[:300]
+        'admin_user').order_by('-created_at')
+
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    q = request.GET.get('q', '').strip()
+
+    if date_from:
+        logs = logs.filter(created_at__date__gte=date_from)
+
+    if date_to:
+        logs = logs.filter(created_at__date__lte=date_to)
+
+    if q:
+        logs = logs.filter(
+            Q(action__icontains=q) |
+            Q(object_type__icontains=q) |
+            Q(comment__icontains=q) |
+            Q(admin_user__email__icontains=q) |
+            Q(admin_user__phone__icontains=q)
+        )
+
+    logs = logs[:300]
 
     return render(request, 'adminpanel/audit.html', {
         'logs': logs,
+        'date_from': date_from,
+        'date_to': date_to,
+        'q': q,
     })
 
 

@@ -51,8 +51,11 @@
                         {{ post.description|truncatechars:120 }}
 
                         {% if post.image %}
-                            <br>
-                            <a href="{{ post.image.url }}" target="_blank" style="font-size:12px;color:#202020;">Открыть фото</a>
+                            <div class="post-thumb">
+                                <a href="{{ post.image.url }}" target="_blank">
+                                    <img src="{{ post.image.url }}" alt="Фото поста">
+                                </a>
+                            </div>
                         {% endif %}
                     </td>
                     <td>
@@ -120,4 +123,18 @@
         </table>
     </div>
 </div>
+<style>
+  .post-thumb {
+    margin-top: 10px;
+  }
+
+  .post-thumb img {
+      width: 96px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #E5E7EB;
+      display: block;
+  }
+</style>
 {% endblock %}

@@ -2,6 +2,17 @@
 
 {% block title %}Аудит{% endblock %}
 
+<div class="admin-card" style="margin-bottom:18px;">
+    <div class="admin-card-body">
+        <form method="GET" class="admin-filters">
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Поиск по действию, объекту или админу">
+            <input class="admin-input" type="date" name="date_from" value="{{ date_from }}">
+            <input class="admin-input" type="date" name="date_to" value="{{ date_to }}">
+            <button class="admin-btn light" type="submit">Найти</button>
+        </form>
+    </div>
+</div>
+
 {% block content %}
 <div class="admin-page-header">
     <div>
@@ -23,7 +34,6 @@
                     <th>Администратор</th>
                     <th>Действие</th>
                     <th>Объект</th>
-                    <th>ID объекта</th>
                     <th>Комментарий</th>
                 </tr>
             </thead>
@@ -35,12 +45,11 @@
                     <td>{{ log.admin_user.email|default:log.admin_user.phone|default:"—" }}</td>
                     <td><span class="badge">{{ log.action }}</span></td>
                     <td>{{ log.object_type }}</td>
-                    <td>{{ log.object_id|default:"—" }}</td>
                     <td>{{ log.comment|default:"—"|truncatechars:100 }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="empty-row">Логов пока нет</td>
+                    <td colspan="5" class="empty-row">Логов пока нет</td>
                 </tr>
                 {% endfor %}
             </tbody>
