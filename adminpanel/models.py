@@ -124,6 +124,15 @@ class SupportTicket(models.Model):
         related_name='support_tickets'
     )
 
+    assigned_admin = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='assigned_admin_id',
+        related_name='assigned_support_tickets'
+    )
+
     subject = models.CharField(max_length=255)
     status = models.CharField(max_length=30, choices=STATUSES, default='open')
     priority = models.CharField(

@@ -1,0 +1,268 @@
+{% extends 'base_no_sidebar.html' %}
+
+{% block title %}Обращение #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="support-page">
+    <div class="support-header">
+        <div>
+            <h1>Обращение #{{ ticket.id }}</h1>
+            <p>{{ ticket.subject }}</p>
+        </div>
+
+        <a href="{% url 'user_support' %}" class="support-btn light">
+            <i class="fas fa-arrow-left"></i>
+            Назад
+        </a>
+    </div>
+
+    <div class="support-chat-card">
+        <div class="support-chat-header">
+            <h3>Переписка</h3>
+
+            {% if ticket.status == 'open' %}
+                <span class="ticket-status yellow">Открыто</span>
+            {% elif ticket.status == 'in_progress' %}
+                <span class="ticket-status dark">В работе</span>
+            {% elif ticket.status == 'closed' %}
+                <span class="ticket-status green">Закрыто</span>
+            {% endif %}
+        </div>
+
+        <div class="support-chat-body">
+            {% for item in ticket_messages %}
+                <div class="support-message {% if item.sender == request.user %}own{% else %}other{% endif %}">
+                    <div class="support-message-head">
+                        <strong>
+                            {% if item.sender == request.user %}
+                                Вы
+                            {% elif item.sender and item.sender.role == 'admin' %}
+                                Администратор
+                            {% else %}
+                                Пользователь
+                            {% endif %}
+                        </strong>
+                        <span>{{ item.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+
+                    <p>{{ item.message }}</p>
+                </div>
+            {% empty %}
+                <div class="empty-support">
+                    <i class="fas fa-comment"></i>
+                    <p>Сообщений пока нет</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if ticket.status != 'closed' %}
+        <form method="POST" class="support-reply-form">
+            {% csrf_token %}
+            <textarea name="message" placeholder="Введите сообщение" required></textarea>
+
+            <button type="submit" class="support-btn">
+                <i class="fas fa-paper-plane"></i>
+                Отправить
+            </button>
+        </form>
+        {% else %}
+        <div class="closed-ticket-message">
+            Обращение закрыто. Для новой проблемы создайте новое обращение.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.support-page {
+    padding: 26px;
+}
+
+.support-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.support-header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 6px;
+}
+
+.support-header p {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.support-chat-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+    overflow: hidden;
+}
+
+.support-chat-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.support-chat-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+}
+
+
+.support-message.own {
+    margin-left: auto;
+    background: #202020;
+    color: #FFFFFF;
+    border-color: #202020;
+}
+
+.support-message-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+
+.support-message-head strong {
+    font-size: 13px;
+}
+
+.support-message-head span {
+    font-size: 11px;
+    opacity: .65;
+}
+
+.support-message p {
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.support-reply-form {
+    padding: 14px;
+    border-top: 1px solid #E5E7EB;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.support-reply-form textarea {
+    flex: 1;
+    min-height: 44px;
+    max-height: 150px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 12px 13px;
+    font-size: 14px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.support-reply-form textarea:focus {
+    outline: none;
+    border-color: #202020;
+}
+
+.support-btn {
+    min-height: 42px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 12px;
+    background: #202020;
+    color: #FFFFFF;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.support-btn.light {
+    background: #FFFFFF;
+    color: #202020;
+    border: 1px solid #E5E7EB;
+}
+
+.support-message {
+    max-width: 70%;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.support-message p {
+    font-size: 14px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.support-chat-body {
+    min-height: 420px;
+    padding: 20px;
+    background: #F7F7F5;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-x: hidden;
+}
+
+.ticket-status {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ticket-status.yellow {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.ticket-status.dark {
+    background: #F3F4F6;
+    color: #202020;
+}
+
+.ticket-status.green {
+    background: #DCFCE7;
+    color: #166534;
+}
+
+.closed-ticket-message {
+    padding: 16px;
+    text-align: center;
+    color: #6B7280;
+    border-top: 1px solid #E5E7EB;
+}
+
+.empty-support {
+    margin: auto;
+    text-align: center;
+    color: #6B7280;
+}
+
+.empty-support i {
+    font-size: 36px;
+    color: #D1D5DB;
+    margin-bottom: 10px;
+}
+</style>
+{% endblock %}

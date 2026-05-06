@@ -18,6 +18,7 @@ from masters.models import MasterProfile
 from django.contrib.auth import update_session_auth_hash
 from calendar import monthrange
 from chats.models import ChatMessage
+from django.urls import reverse
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -668,15 +669,7 @@ def create_post(request):
 
 @login_required
 def report_post(request, post_id):
-    """Жалоба на пост"""
-    if request.method == 'POST':
-        post = get_object_or_404(ClientPost, id=post_id)
-        reason = request.POST.get('reason')
-
-        # Здесь можно сохранить жалобу в базу
-        messages.success(request, 'Жалоба отправлена модератору')
-
-    return redirect('posts_list')
+    return redirect(f"{reverse('create_complaint')}?type=post&post_id={post_id}")
 
 
 @login_required

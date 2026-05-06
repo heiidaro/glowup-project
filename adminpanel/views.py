@@ -852,17 +852,22 @@ def admin_complaint_action(request, complaint_id):
 @admin_required
 def admin_support(request):
     tickets = SupportTicket.objects.select_related(
-        'user').order_by('-updated_at')
+        'user',
+        'assigned_admin'
+    ).order_by('-updated_at')
 
     status = request.GET.get('status', '').strip()
-    priority = request.GET.get('priority', '').strip()
+    assigned = request.GET.get('assigned', '').strip()
     q = request.GET.get('q', '').strip()
 
     if status:
         tickets = tickets.filter(status=status)
 
-    if priority:
-        tickets = tickets.filter(priority=priority)
+    if assigned == 'me':
+        tickets = tickets.filter(assigned_admin=request.user)
+
+    elif assigned == 'unassigned':
+        tickets = tickets.filter(assigned_admin__isnull=True)
 
     if q:
         tickets = tickets.filter(
@@ -874,7 +879,7 @@ def admin_support(request):
     return render(request, 'adminpanel/support.html', {
         'tickets': tickets,
         'status': status,
-        'priority': priority,
+        'assigned': assigned,
         'q': q,
     })
 
@@ -882,7 +887,7 @@ def admin_support(request):
 @admin_required
 def admin_support_detail(request, ticket_id):
     ticket = get_object_or_404(
-        SupportTicket.objects.select_related('user'),
+        SupportTicket.objects.select_related('user', 'assigned_admin'),
         id=ticket_id
     )
 
@@ -892,6 +897,17 @@ def admin_support_detail(request, ticket_id):
     if request.method == 'POST':
         message_text = request.POST.get('message', '').strip()
 
+        if ticket.status == 'closed':
+            messages.error(request, 'Обращение закрыто')
+            return redirect('admin_support_detail', ticket_id=ticket.id)
+
+        if ticket.assigned_admin and ticket.assigned_admin != request.user:
+            messages.error(
+                request,
+                'Обращение уже закреплено за другим администратором'
+            )
+            return redirect('admin_support_detail', ticket_id=ticket.id)
+
         if message_text:
             SupportMessage.objects.create(
                 ticket=ticket,
@@ -899,12 +915,25 @@ def admin_support_detail(request, ticket_id):
                 message=message_text
             )
 
+            update_fields = ['status', 'updated_at']
+
             ticket.status = 'in_progress'
             ticket.updated_at = timezone.now()
-            ticket.save(update_fields=['status', 'updated_at'])
 
-            write_admin_log(request, 'support_reply',
-                            'support_ticket', ticket.id, message_text[:120])
+            if not ticket.assigned_admin:
+                ticket.assigned_admin = request.user
+                update_fields.append('assigned_admin')
+
+            ticket.save(update_fields=update_fields)
+
+            write_admin_log(
+                request,
+                'support_reply',
+                'support_ticket',
+                ticket.id,
+                message_text[:120]
+            )
+
             messages.success(request, 'Ответ отправлен')
 
         return redirect('admin_support_detail', ticket_id=ticket.id)
@@ -923,15 +952,27 @@ def admin_support_action(request, ticket_id):
         action = request.POST.get('action')
 
         if action == 'in_progress':
+            update_fields = ['status', 'updated_at']
+
             ticket.status = 'in_progress'
             ticket.updated_at = timezone.now()
-            ticket.save(update_fields=['status', 'updated_at'])
+
+            if not ticket.assigned_admin:
+                ticket.assigned_admin = request.user
+                update_fields.append('assigned_admin')
+
+            ticket.save(update_fields=update_fields)
 
             write_admin_log(request, 'support_in_progress',
                             'support_ticket', ticket.id)
             messages.success(request, 'Обращение переведено в работу')
 
         elif action == 'close':
+            if ticket.assigned_admin and ticket.assigned_admin != request.user:
+                messages.error(
+                    request, 'Закрыть обращение может закреплённый администратор')
+                return redirect('admin_support')
+
             ticket.status = 'closed'
             ticket.closed_at = timezone.now()
             ticket.updated_at = timezone.now()

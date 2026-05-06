@@ -10,7 +10,9 @@
     </div>
     <div class="header-actions">
         <button class="icon-btn"><i class="fas fa-bell"></i></button>
-        <button class="icon-btn"><i class="fas fa-question-circle"></i></button>
+        <a href="{% url 'user_support' %}" class="icon-btn support-help-btn" title="Поддержка">
+            <i class="fas fa-question-circle"></i>
+        </a>
     </div>
 </div>
 
@@ -1687,6 +1689,51 @@ body.modal-open {
     .services-save-btn {
         width: 100%;
     }
+}
+
+.icon-btn,
+a.icon-btn,
+button.icon-btn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+
+    background: #FFFFFF;
+    color: #202020;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+    text-decoration: none;
+    cursor: pointer;
+
+    box-shadow: 0 8px 18px rgba(0,0,0,.05);
+    transition: .18s ease;
+}
+
+.icon-btn i,
+a.icon-btn i,
+button.icon-btn i {
+    font-size: 17px;
+    line-height: 1;
+}
+
+.icon-btn:hover,
+a.icon-btn:hover,
+button.icon-btn:hover {
+    background: #202020;
+    color: #FFFFFF;
+    border-color: #202020;
+}
+
+.support-help-btn {
+    flex-shrink: 0;
 }
 </style>
 

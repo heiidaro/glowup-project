@@ -76,6 +76,12 @@
                             <span>Сообщения</span>
                         </a>
                     </li>
+                    <li class="{% if request.resolver_match.url_name == 'user_support' or request.resolver_match.url_name == 'user_support_detail' or request.resolver_match.url_name == 'create_complaint' %}active{% endif %}">
+                        <a href="{% url 'user_support' %}">
+                            <i class="fas fa-headset"></i>
+                            <span>Поддержка</span>
+                        </a>
+                    </li>
                 </ul>
                 
                 <ul class="nav-bottom">
@@ -85,6 +91,7 @@
                             <span>Выйти</span>
                         </a>
                     </li>
+                    
                 </ul>
             </nav>
         </aside>

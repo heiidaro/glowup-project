@@ -1276,27 +1276,7 @@ function deletePost(postId) {
 }
 
 function reportPost(postId) {
-    const reason = prompt('Укажите причину жалобы:');
-    if (reason) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/client/report-post/${postId}/`;
-
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = 'csrfmiddlewaretoken';
-        csrf.value = '{{ csrf_token }}';
-        form.appendChild(csrf);
-
-        const reasonInput = document.createElement('input');
-        reasonInput.type = 'hidden';
-        reasonInput.name = 'reason';
-        reasonInput.value = reason;
-        form.appendChild(reasonInput);
-
-        document.body.appendChild(form);
-        form.submit();
-    }
+    window.location.href = `/complaints/create/?type=post&post_id=${postId}`;
 }
 
 document.addEventListener('click', function(e) {

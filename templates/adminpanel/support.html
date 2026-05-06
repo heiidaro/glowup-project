@@ -15,24 +15,23 @@
         <h3>Обращения</h3>
 
         <form method="GET" class="admin-filters">
-            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Тема, email или телефон">
+          <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Тема, email или телефон">
 
-            <select class="admin-select" name="status">
-                <option value="">Все статусы</option>
-                <option value="open" {% if status == 'open' %}selected{% endif %}>Открытые</option>
-                <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>В работе</option>
-                <option value="closed" {% if status == 'closed' %}selected{% endif %}>Закрытые</option>
-            </select>
+          <select class="admin-select" name="status">
+              <option value="">Все статусы</option>
+              <option value="open" {% if status == 'open' %}selected{% endif %}>Открытые</option>
+              <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>В работе</option>
+              <option value="closed" {% if status == 'closed' %}selected{% endif %}>Закрытые</option>
+          </select>
 
-            <select class="admin-select" name="priority">
-                <option value="">Любой приоритет</option>
-                <option value="low" {% if priority == 'low' %}selected{% endif %}>Низкий</option>
-                <option value="normal" {% if priority == 'normal' %}selected{% endif %}>Обычный</option>
-                <option value="high" {% if priority == 'high' %}selected{% endif %}>Высокий</option>
-            </select>
+          <select class="admin-select" name="assigned">
+              <option value="">Все обращения</option>
+              <option value="me" {% if assigned == 'me' %}selected{% endif %}>Закреплены за мной</option>
+              <option value="unassigned" {% if assigned == 'unassigned' %}selected{% endif %}>Не назначены</option>
+          </select>
 
-            <button class="admin-btn light" type="submit">Найти</button>
-        </form>
+          <button class="admin-btn light" type="submit">Найти</button>
+      </form>
     </div>
 
     <div class="admin-card-body">
@@ -41,9 +40,10 @@
                 <tr>
                     <th>ID</th>
                     <th>Пользователь</th>
+                    <th>Роль</th>
                     <th>Тема</th>
+                    <th>Закреплён за</th>
                     <th>Статус</th>
-                    <th>Приоритет</th>
                     <th>Дата</th>
                     <th>Действия</th>
                 </tr>
@@ -63,9 +63,33 @@
                     </td>
 
                     <td>
+                        {% if ticket.user %}
+                            {% if ticket.user.role == 'client' %}
+                                <span class="badge">Клиент</span>
+                            {% elif ticket.user.role == 'master' %}
+                                <span class="badge">Мастер</span>
+                            {% elif ticket.user.role == 'admin' %}
+                                <span class="badge">Администратор</span>
+                            {% else %}
+                                <span class="badge">{{ ticket.user.role }}</span>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
                         <a href="{% url 'admin_support_detail' ticket.id %}" style="color:#202020;font-weight:600;text-decoration:none;">
                             {{ ticket.subject }}
                         </a>
+                    </td>
+
+                    <td>
+                        {% if ticket.assigned_admin %}
+                            {{ ticket.assigned_admin.email|default:ticket.assigned_admin.phone|default:"Администратор" }}
+                        {% else %}
+                            <span class="badge yellow">Не назначен</span>
+                        {% endif %}
                     </td>
 
                     <td>
@@ -75,16 +99,6 @@
                             <span class="badge">В работе</span>
                         {% elif ticket.status == 'closed' %}
                             <span class="badge green">Закрыто</span>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        {% if ticket.priority == 'high' %}
-                            <span class="badge red">Высокий</span>
-                        {% elif ticket.priority == 'normal' %}
-                            <span class="badge">Обычный</span>
-                        {% else %}
-                            <span class="badge green">Низкий</span>
                         {% endif %}
                     </td>
 
@@ -114,7 +128,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="empty-row">Обращений пока нет</td>
+                    <td colspan="8" class="empty-row">Обращений пока нет</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -1,0 +1,346 @@
+{% extends 'base_no_sidebar.html' %}
+
+{% block title %}Жалоба{% endblock %}
+
+{% block content %}
+<div class="complaint-page">
+    <div class="complaint-header">
+        <div>
+            <h1>Подать жалобу</h1>
+            <p>Выберите объект жалобы и опишите проблему. Администратор рассмотрит обращение.</p>
+        </div>
+
+        <a href="{% url 'user_support' %}" class="complaint-btn light">
+            <i class="fas fa-arrow-left"></i>
+            Назад
+        </a>
+    </div>
+
+    <div class="complaint-card">
+        <form method="POST" class="complaint-form">
+            {% csrf_token %}
+
+            {% if selected_post %}
+                <input type="hidden" name="complaint_type" value="post">
+                <input type="hidden" name="post_id" value="{{ selected_post.id }}">
+
+                <div class="complaint-preview">
+                    <span class="preview-label">Жалоба на пост</span>
+
+                    <div class="preview-title">
+                        {% if selected_post.is_anonymous %}
+                            Анонимный пост
+                        {% else %}
+                            {{ selected_post.client.full_name|default:"Клиент" }}
+                        {% endif %}
+                    </div>
+
+                    <p>{{ selected_post.description|truncatechars:220 }}</p>
+
+                    <div class="preview-meta">
+                        <span>{{ selected_post.created_at|date:"d.m.Y H:i" }}</span>
+
+                        {% if selected_post.budget %}
+                            <span>{{ selected_post.budget|floatformat:0 }} ₽</span>
+                        {% endif %}
+                    </div>
+
+                    {% if selected_post.image %}
+                        <img src="{{ selected_post.image.url }}" alt="Фото поста">
+                    {% endif %}
+                </div>
+
+            {% elif selected_review %}
+                <input type="hidden" name="complaint_type" value="review">
+                <input type="hidden" name="review_id" value="{{ selected_review.id }}">
+
+                <div class="complaint-preview">
+                    <span class="preview-label">Жалоба на отзыв</span>
+
+                    <div class="preview-title">
+                        {{ selected_review.client.full_name|default:"Клиент" }}
+                        → {{ selected_review.master.display_name|default:"Мастер" }}
+                    </div>
+
+                    <div class="review-preview-rating">
+                        Оценка: {{ selected_review.rating }}/5
+                    </div>
+
+                    <p>{{ selected_review.comment|default:"Без комментария" }}</p>
+
+                    <div class="preview-meta">
+                        <span>{{ selected_review.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                </div>
+
+            {% elif selected_master %}
+                <input type="hidden" name="complaint_type" value="master">
+                <input type="hidden" name="master_id" value="{{ selected_master.id }}">
+
+                <div class="complaint-preview">
+                    <span class="preview-label">Жалоба на мастера</span>
+
+                    <div class="master-preview">
+                        <div class="preview-avatar">
+                            {% if selected_master.avatar %}
+                                <img src="{{ selected_master.avatar.url }}" alt="">
+                            {% else %}
+                                {{ selected_master.display_name|first|default:"М" }}
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <div class="preview-title">{{ selected_master.display_name|default:"Мастер" }}</div>
+                            <p>{{ selected_master.address_text|default:"Адрес не указан" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif request.user.role == 'client' %}
+                <input type="hidden" name="complaint_type" value="master">
+
+                <label>Мастер</label>
+                <select name="master_id" required>
+                    <option value="">Выберите мастера</option>
+                    {% for master in available_masters %}
+                        <option value="{{ master.id }}">
+                            {{ master.display_name|default:"Мастер" }}
+                            {% if master.address_text %} — {{ master.address_text }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                {% if not available_masters %}
+                    <div class="complaint-hint">
+                        У вас пока нет мастеров, к которым вы были записаны. Жалобу на мастера можно отправить только после записи.
+                    </div>
+                {% endif %}
+
+            {% elif request.user.role == 'master' %}
+                <input type="hidden" name="complaint_type" value="client">
+
+                <label>Клиент</label>
+                <select name="client_profile_id" required>
+                    <option value="">Выберите клиента</option>
+                    {% for client in available_clients %}
+                        <option value="{{ client.id }}">
+                            {{ client.full_name|default:"Клиент" }}
+                            {% if client.user.email %} — {{ client.user.email }}{% endif %}
+                            {% if client.user.phone %} — {{ client.user.phone }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                {% if not available_clients %}
+                    <div class="complaint-hint">
+                        У вас пока нет клиентов, которые были к вам записаны. Жалобу на клиента можно отправить только после записи.
+                    </div>
+                {% endif %}
+
+            {% else %}
+                <input type="hidden" name="complaint_type" value="other">
+
+                <div class="complaint-hint">
+                    Для вашей роли доступна только общая жалоба.
+                </div>
+            {% endif %}
+
+            <label>Причина жалобы</label>
+            <textarea name="reason" placeholder="Подробно опишите, что произошло" required></textarea>
+
+            <button type="submit" class="complaint-btn">
+                <i class="fas fa-paper-plane"></i>
+                Отправить жалобу
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+.complaint-page {
+    padding: 26px;
+}
+
+.complaint-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.complaint-header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 6px;
+}
+
+.complaint-header p {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.complaint-card {
+    max-width: 760px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+    padding: 20px;
+}
+
+.complaint-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.complaint-form label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+}
+
+.complaint-form select,
+.complaint-form textarea {
+    width: 100%;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 12px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #FFFFFF;
+}
+
+.complaint-form textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.complaint-form select:focus,
+.complaint-form textarea:focus {
+    outline: none;
+    border-color: #202020;
+}
+
+.complaint-preview {
+    border: 1px solid #E5E7EB;
+    border-radius: 18px;
+    background: #F7F7F5;
+    padding: 14px;
+}
+
+.preview-label {
+    display: inline-flex;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #202020;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.preview-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 6px;
+}
+
+.complaint-preview p {
+    color: #6B7280;
+    font-size: 14px;
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+
+.preview-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    color: #6B7280;
+    font-size: 12px;
+}
+
+.complaint-preview img {
+    display: block;
+    max-width: 260px;
+    max-height: 190px;
+    object-fit: cover;
+    border-radius: 14px;
+    margin-top: 12px;
+}
+
+.master-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.preview-avatar {
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+    border-radius: 50%;
+    background: #202020;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-weight: 700;
+}
+
+.preview-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
+}
+
+.review-preview-rating {
+    display: inline-flex;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.complaint-hint {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    color: #6B7280;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.complaint-btn {
+    min-height: 42px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 12px;
+    background: #202020;
+    color: #FFFFFF;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.complaint-btn.light {
+    background: #FFFFFF;
+    color: #202020;
+    border: 1px solid #E5E7EB;
+}
+</style>
+{% endblock %}

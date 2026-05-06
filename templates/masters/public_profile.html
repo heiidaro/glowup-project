@@ -53,6 +53,12 @@
             <div class="hero-actions">
                 <a href="{% url 'start_chat_with_master' master.id %}" class="btn-light">Написать</a>
                 <a href="{% url 'book_master' master.id %}" class="btn-dark">Записаться</a>
+
+                {% if request.user.is_authenticated and request.user.role == 'client' %}
+                    <a href="{% url 'create_complaint' %}?type=master&master_id={{ master.id }}" class="btn-light">
+                        Пожаловаться
+                    </a>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -161,22 +167,41 @@
               <button type="submit">Оставить отзыв</button>
           </div>
       </form>
-      <div class="reviews-list">
-    {% for review in reviews %}
-      <div class="review-card">
+        {% endif %}
+
+        <div class="reviews-list">
+      {% for review in reviews %}
+        <div class="review-card">
           <div class="review-top">
               <strong>{{ review.client.full_name|default:"Клиент" }}</strong>
-              <span>★ {{ review.rating }}</span>
+
+              <div class="review-actions">
+                  <span>★ {{ review.rating }}</span>
+
+                  {% if request.user.is_authenticated %}
+                  <div class="review-menu">
+                      <button type="button" class="review-menu-btn" onclick="toggleReviewMenu({{ review.id }})">
+                          <i class="fas fa-ellipsis-h"></i>
+                      </button>
+
+                      <div class="review-dropdown" id="review-menu-{{ review.id }}">
+                          <a href="{% url 'create_complaint' %}?type=review&review_id={{ review.id }}">
+                              <i class="fas fa-flag"></i>
+                              Пожаловаться
+                          </a>
+                      </div>
+                  </div>
+                  {% endif %}
+              </div>
           </div>
 
           <p>{{ review.comment }}</p>
           <small>{{ review.created_at|date:"d.m.Y" }}</small>
       </div>
-      {% empty %}
-      <p class="empty-text">Отзывов пока нет</p>
-      {% endfor %}
-  </div>
-      {% endif %}
+            {% empty %}
+            <p class="empty-text">Отзывов пока нет</p>
+            {% endfor %}
+        </div>
 </div>
 
 <style>
@@ -796,6 +821,64 @@
     background: #000;
     transform: translateY(-2px);
 }
+
+.review-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.review-menu {
+    position: relative;
+}
+
+.review-menu-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 10px;
+    background: #F3F4F6;
+    color: #202020;
+    cursor: pointer;
+}
+
+.review-menu-btn:hover {
+    background: #202020;
+    color: #FFFFFF;
+}
+
+.review-dropdown {
+    position: absolute;
+    top: 34px;
+    right: 0;
+    width: 160px;
+    padding: 6px;
+    border-radius: 12px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 14px 30px rgba(0,0,0,.12);
+    display: none;
+    z-index: 10;
+}
+
+.review-dropdown.active {
+    display: block;
+}
+
+.review-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    color: #202020;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.review-dropdown a:hover {
+    background: #F3F4F6;
+}
 </style>
 
 <script>
@@ -813,6 +896,29 @@ document.addEventListener('DOMContentLoaded', function () {
             ratingInput.value = this.dataset.value;
         });
     });
+});
+</script>
+<script>
+function toggleReviewMenu(reviewId) {
+    const menu = document.getElementById(`review-menu-${reviewId}`);
+
+    document.querySelectorAll('.review-dropdown').forEach(item => {
+        if (item !== menu) {
+            item.classList.remove('active');
+        }
+    });
+
+    if (menu) {
+        menu.classList.toggle('active');
+    }
+}
+
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.review-menu')) {
+        document.querySelectorAll('.review-dropdown').forEach(item => {
+            item.classList.remove('active');
+        });
+    }
 });
 </script>
 {% endblock %}
