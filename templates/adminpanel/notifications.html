@@ -42,40 +42,77 @@
         </div>
     </div>
 
-    <div class="admin-card">
-        <div class="admin-card-header">
-            <h3>Последние уведомления</h3>
-        </div>
+    <div class="admin-card" style="margin-top: 18px;">
+      <div class="admin-card-header">
+          <h3>Последние рассылки</h3>
+      </div>
 
-        <div class="admin-card-body">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Пользователь</th>
-                        <th>Заголовок</th>
-                        <th>Дата</th>
-                    </tr>
-                </thead>
+      <div class="admin-card-body">
+          <table class="admin-table">
+              <thead>
+                  <tr>
+                      <th>Заголовок</th>
+                      <th>Получатели</th>
+                      <th>Отправлено</th>
+                      <th>Дата</th>
+                      <th>Администратор</th>
+                  </tr>
+              </thead>
 
-                <tbody>
-                    {% for notification in recent_notifications %}
-                    <tr>
-                        <td>{{ notification.user.email|default:notification.user.phone|default:"—" }}</td>
-                        <td>
-                            {{ notification.title }}<br>
-                            <span style="color:#6B7280;font-size:12px;">{{ notification.message|truncatechars:70 }}</span>
-                        </td>
-                        <td>{{ notification.created_at|date:"d.m.Y H:i" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="3" class="empty-row">Уведомлений пока нет</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+              <tbody>
+                  {% for campaign in campaigns %}
+                      <tr>
+                          <td>
+                              <strong>{{ campaign.title }}</strong>
+                              <br>
+                              <span style="color:#6B7280;font-size:12px;">
+                                  {{ campaign.message|truncatechars:90 }}
+                              </span>
+                          </td>
+
+                          <td>
+                              {% if campaign.target == 'all' %}
+                                  <span class="badge">Все пользователи</span>
+                              {% elif campaign.target == 'clients' %}
+                                  <span class="badge">Клиенты</span>
+                              {% elif campaign.target == 'masters' %}
+                                  <span class="badge">Мастера</span>
+                              {% elif campaign.target == 'admins' %}
+                                  <span class="badge">Администраторы</span>
+                              {% else %}
+                                  <span class="badge">{{ campaign.target }}</span>
+                              {% endif %}
+                          </td>
+
+                          <td>
+                              <span class="badge green">
+                                  {{ campaign.sent_count }}
+                              </span>
+                          </td>
+
+                          <td>
+                              {{ campaign.created_at|date:"d.m.Y H:i" }}
+                          </td>
+
+                          <td>
+                              {% if campaign.sender %}
+                                  {{ campaign.sender.email|default:campaign.sender.phone|default:"Администратор" }}
+                              {% else %}
+                                  —
+                              {% endif %}
+                          </td>
+                      </tr>
+                  {% empty %}
+                      <tr>
+                          <td colspan="5" class="empty-row">
+                              Рассылок пока нет
+                          </td>
+                      </tr>
+                  {% endfor %}
+              </tbody>
+          </table>
+      </div>
+  </div>
 </div>
 
 <style>

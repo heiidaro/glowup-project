@@ -14,7 +14,7 @@ from notifications.models import Notification
 from django.db import transaction
 from django.http import JsonResponse
 import json
-from masters.models import MasterProfile
+from masters.models import MasterProfile, ServiceCategory
 from django.contrib.auth import update_session_auth_hash
 from calendar import monthrange
 from chats.models import ChatMessage

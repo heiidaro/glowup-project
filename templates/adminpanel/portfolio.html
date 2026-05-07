@@ -6,136 +6,470 @@
 <div class="admin-page-header">
     <div>
         <h1>Портфолио мастеров</h1>
-        <p>Проверка, скрытие и удаление загруженных работ мастеров</p>
+        <p>Портфолио сгруппировано по мастерам. Внутри можно скрывать, возвращать и удалять работы.</p>
     </div>
 </div>
 
+{% if selected_master %}
+<div class="admin-card" style="margin-bottom:18px;">
+    <div class="admin-card-body" style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div>
+            <strong>Открыто портфолио мастера: {{ selected_master.display_name|default:"Мастер" }}</strong>
+            <p style="color:#6B7280;font-size:13px;margin-top:4px;">
+                {{ selected_master.user.email|default:selected_master.user.phone|default:"Контакт не указан" }}
+            </p>
+        </div>
+
+        <a href="{% url 'admin_portfolio' %}" class="admin-btn light">
+            Показать всех мастеров
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <div class="admin-card">
     <div class="admin-card-header">
-        <h3>Работы мастеров</h3>
+        <h3>Мастера с портфолио</h3>
 
         <form method="GET" class="admin-filters">
-            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Мастер или описание">
+          {% if master_id %}
+              <input type="hidden" name="master_id" value="{{ master_id }}">
+          {% endif %}
+            <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Мастер, email, телефон или описание">
+
+            <select class="admin-select" name="status">
+                <option value="">Все фото</option>
+                <option value="visible" {% if status == 'visible' %}selected{% endif %}>Только видимые</option>
+                <option value="hidden" {% if status == 'hidden' %}selected{% endif %}>Только скрытые</option>
+            </select>
+
             <button class="admin-btn light" type="submit">Найти</button>
         </form>
     </div>
 
     <div class="admin-card-body">
-        <div class="portfolio-admin-grid">
-            {% for item in portfolio %}
-            <div class="portfolio-admin-card">
-                <div class="portfolio-image">
-                    {% if item.image %}
-                        <img src="{{ item.image.url }}" alt="">
-                    {% else %}
-                        <div class="portfolio-empty">Нет изображения</div>
-                    {% endif %}
-                </div>
+        <div class="portfolio-master-grid">
+            {% for group in grouped_masters %}
+                <div class="portfolio-master-card">
+                    <div class="portfolio-master-head">
+                        <div class="portfolio-master-avatar">
+                            {% if group.master.avatar %}
+                                <img src="{{ group.master.avatar.url }}" alt="">
+                            {% else %}
+                                {{ group.master.display_name|first|default:"М" }}
+                            {% endif %}
+                        </div>
 
-                <div class="portfolio-info">
-                    <h4>{{ item.master.display_name|default:"Мастер" }}</h4>
-                    <p>{{ item.description|default:"Описание не добавлено"|truncatechars:90 }}</p>
-
-                    <div class="portfolio-meta">
-                        <span>{{ item.created_at|date:"d.m.Y" }}</span>
-
-                        {% if item.is_hidden %}
-                            <span class="badge yellow">Скрыто</span>
-                        {% else %}
-                            <span class="badge green">Видно</span>
-                        {% endif %}
+                        <div class="portfolio-master-info">
+                            <h4>{{ group.master.display_name|default:"Мастер" }}</h4>
+                            <p>{{ group.master.user.email|default:group.master.user.phone|default:"Контакт не указан" }}</p>
+                        </div>
                     </div>
 
-                    <div class="admin-actions">
-                        {% if item.is_hidden %}
-                        <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="restore">
-                            <button class="admin-btn green" type="submit">Вернуть</button>
-                        </form>
-                        {% else %}
-                        <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="hide">
-                            <button class="admin-btn yellow" type="submit">Скрыть</button>
-                        </form>
-                        {% endif %}
+                    <div class="portfolio-master-stats">
+                        <span>Всего: <b>{{ group.total_count }}</b></span>
+                        <span>Видно: <b>{{ group.visible_count }}</b></span>
+                        <span>Скрыто: <b>{{ group.hidden_count }}</b></span>
+                    </div>
 
-                        <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="delete">
-                            <button class="admin-btn red" type="submit">Удалить</button>
-                        </form>
+                    <div class="portfolio-preview-grid">
+                        {% for item in group.items|slice:":4" %}
+                            <div class="portfolio-preview-item {% if item.is_hidden %}is-hidden{% endif %}">
+                                {% if item.image %}
+                                    <img src="{{ item.image.url }}" alt="">
+                                {% else %}
+                                    <div class="portfolio-no-photo">Нет фото</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" class="admin-btn portfolio-open-btn" onclick="openPortfolioModal('{{ group.master.id }}')">
+                        Открыть портфолио
+                    </button>
+                </div>
+
+                <div class="portfolio-modal" id="portfolio-modal-{{ group.master.id }}">
+                    <div class="portfolio-modal-backdrop" onclick="closePortfolioModal('{{ group.master.id }}')"></div>
+
+                    <div class="portfolio-modal-card">
+                        <div class="portfolio-modal-header">
+                            <div>
+                                <h3>{{ group.master.display_name|default:"Мастер" }}</h3>
+                                <p>Все работы мастера в портфолио</p>
+                            </div>
+
+                            <button type="button" class="portfolio-modal-close" onclick="closePortfolioModal('{{ group.master.id }}')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="portfolio-modal-body">
+                            <div class="portfolio-full-grid">
+                                {% for item in group.items %}
+                                    <div class="portfolio-full-item">
+                                        <div class="portfolio-full-image {% if item.is_hidden %}is-hidden{% endif %}">
+                                            {% if item.image %}
+                                                <img src="{{ item.image.url }}" alt="">
+                                            {% else %}
+                                                <div class="portfolio-no-photo">Нет фото</div>
+                                            {% endif %}
+
+                                            {% if item.is_hidden %}
+                                                <span class="portfolio-hidden-label">Скрыто</span>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="portfolio-full-content">
+                                            <p>{{ item.description|default:"Описание не добавлено"|truncatechars:100 }}</p>
+
+                                            <div class="portfolio-full-meta">
+                                                <span>{{ item.created_at|date:"d.m.Y H:i" }}</span>
+
+                                                {% if item.is_hidden %}
+                                                    <span class="badge yellow">Скрыто</span>
+                                                {% else %}
+                                                    <span class="badge green">Видно</span>
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="admin-actions">
+                                                {% if item.is_hidden %}
+                                                    <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="restore">
+                                                        <button class="admin-btn green" type="submit">Вернуть</button>
+                                                    </form>
+                                                {% else %}
+                                                    <form method="POST" action="{% url 'admin_portfolio_action' item.id %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="hide">
+                                                        <button class="admin-btn yellow" type="submit">Скрыть</button>
+                                                    </form>
+                                                {% endif %}
+
+                                                <form method="POST" action="{% url 'admin_portfolio_action' item.id %}" onsubmit="return confirm('Удалить фото из портфолио?')">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <button class="admin-btn red" type="submit">Удалить</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div class="empty-row">Фото у мастера пока нет</div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
             {% empty %}
-            <div class="empty-row">Работ в портфолио пока нет</div>
+                <div class="empty-row">Портфолио не найдено</div>
             {% endfor %}
         </div>
     </div>
 </div>
 
 <style>
-.portfolio-admin-grid {
+.portfolio-master-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 16px;
 }
 
-.portfolio-admin-card {
+.portfolio-master-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.04);
+}
+
+.portfolio-master-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.portfolio-master-avatar {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 16px;
+    background: #202020;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    overflow: hidden;
+}
+
+.portfolio-master-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.portfolio-master-info {
+    min-width: 0;
+}
+
+.portfolio-master-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 4px;
+}
+
+.portfolio-master-info p {
+    color: #6B7280;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.portfolio-master-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.portfolio-master-stats span {
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #F3F4F6;
+    color: #4B5563;
+    font-size: 12px;
+}
+
+.portfolio-master-stats b {
+    color: #202020;
+}
+
+.portfolio-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 7px;
+    margin-bottom: 14px;
+}
+
+.portfolio-preview-item {
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    position: relative;
+}
+
+.portfolio-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.portfolio-preview-item.is-hidden img,
+.portfolio-full-image.is-hidden img {
+    filter: grayscale(1);
+    opacity: .45;
+}
+
+.portfolio-no-photo {
+    width: 100%;
+    height: 100%;
+    color: #6B7280;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.portfolio-open-btn {
+    width: 100%;
+}
+
+.portfolio-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 1200;
+}
+
+.portfolio-modal.active {
+    display: block;
+}
+
+.portfolio-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.38);
+}
+
+.portfolio-modal-card {
+    position: relative;
+    width: min(1080px, calc(100vw - 36px));
+    max-height: calc(100vh - 60px);
+    margin: 30px auto;
+    background: #FFFFFF;
+    border-radius: 24px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 28px 70px rgba(0,0,0,.22);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.portfolio-modal-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.portfolio-modal-header h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 4px;
+}
+
+.portfolio-modal-header p {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.portfolio-modal-close {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 13px;
+    background: #F3F4F6;
+    color: #202020;
+    cursor: pointer;
+}
+
+.portfolio-modal-close:hover {
+    background: #202020;
+    color: #FFFFFF;
+}
+
+.portfolio-modal-body {
+    padding: 18px;
+    overflow: auto;
+}
+
+.portfolio-full-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 16px;
+}
+
+.portfolio-full-item {
     border: 1px solid #E5E7EB;
     border-radius: 18px;
     overflow: hidden;
     background: #FFFFFF;
 }
 
-.portfolio-image {
-    height: 190px;
+.portfolio-full-image {
+    position: relative;
+    height: 180px;
     background: #F7F7F5;
 }
 
-.portfolio-image img {
+.portfolio-full-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
 }
 
-.portfolio-empty {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6B7280;
-    font-size: 13px;
-}
-
-.portfolio-info {
-    padding: 14px;
-}
-
-.portfolio-info h4 {
-    font-size: 15px;
+.portfolio-hidden-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #202020;
+    color: #FFFFFF;
+    font-size: 12px;
     font-weight: 600;
-    margin-bottom: 6px;
 }
 
-.portfolio-info p {
+.portfolio-full-content {
+    padding: 13px;
+}
+
+.portfolio-full-content p {
+    min-height: 38px;
     color: #6B7280;
     font-size: 13px;
     line-height: 1.4;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
-.portfolio-meta {
+.portfolio-full-meta {
     display: flex;
     justify-content: space-between;
     gap: 10px;
     align-items: center;
-    color: #6B7280;
-    font-size: 12px;
     margin-bottom: 12px;
 }
+
+.portfolio-full-meta span:first-child {
+    color: #6B7280;
+    font-size: 12px;
+}
+
+@media (max-width: 800px) {
+    .portfolio-preview-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .portfolio-modal-card {
+        margin: 16px auto;
+        max-height: calc(100vh - 32px);
+    }
+
+    .portfolio-full-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
+
+<script>
+function openPortfolioModal(masterId) {
+    const modal = document.getElementById(`portfolio-modal-${masterId}`);
+
+    if (!modal) return;
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePortfolioModal(masterId) {
+    const modal = document.getElementById(`portfolio-modal-${masterId}`);
+
+    if (!modal) return;
+
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        document.querySelectorAll('.portfolio-modal.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+
+        document.body.style.overflow = '';
+    }
+});
+</script>
 {% endblock %}

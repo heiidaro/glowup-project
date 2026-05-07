@@ -50,7 +50,10 @@
                 {% for master in masters %}
                 <tr>
                     <td>
-                        <strong>{{ master.display_name|default:"Мастер" }}</strong><br>
+                        <a href="{% url 'admin_master_detail' master.id %}" class="admin-master-link">
+                            {{ master.display_name|default:"Мастер" }}
+                        </a>
+                        <br>
                         <span style="color:#6B7280;font-size:12px;">ID {{ master.id }}</span>
                     </td>
                     <td>
@@ -74,6 +77,21 @@
                     </td>
                     <td>
                         <div class="admin-actions">
+                            <a href="{% url 'admin_master_detail' master.id %}" class="admin-btn light">
+                                Профиль
+                            </a>
+
+                            <button type="button"
+                                    class="admin-btn light"
+                                    onclick="openMasterEditModal(
+                                        '{{ master.id }}',
+                                        '{{ master.display_name|default:""|escapejs }}',
+                                        '{{ master.address_text|default:""|escapejs }}',
+                                        '{{ master.bio|default:""|escapejs }}'
+                                    )">
+                                Изменить
+                            </button>
+
                             <form method="POST" action="{% url 'admin_master_action' master.id %}">
                                 {% csrf_token %}
                                 {% if master.is_approved %}
@@ -99,22 +117,6 @@
                     </td>
                 </tr>
 
-                <tr>
-                    <td colspan="6" style="background:#FAFAFA;">
-                        <form method="POST" action="{% url 'admin_master_action' master.id %}" class="admin-form-grid">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="edit_public">
-
-                            <input class="admin-input" type="text" name="display_name" value="{{ master.display_name }}" placeholder="Имя / студия">
-                            <input class="admin-input" type="text" name="address_text" value="{{ master.address_text }}" placeholder="Адрес">
-                            <input class="admin-input" type="text" name="bio" value="{{ master.bio|default:'' }}" placeholder="О себе">
-
-                            <button class="admin-btn light" type="submit">
-                                Сохранить публичные данные
-                            </button>
-                        </form>
-                    </td>
-                </tr>
                 {% empty %}
                 <tr>
                     <td colspan="6" class="empty-row">Мастеров не найдено</td>
@@ -124,4 +126,181 @@
         </table>
     </div>
 </div>
+<div class="admin-modal" id="masterEditModal">
+    <div class="admin-modal-backdrop" onclick="closeMasterEditModal()"></div>
+
+    <div class="admin-modal-card">
+        <div class="admin-modal-header">
+            <div>
+                <h3>Редактировать мастера</h3>
+                <p>Изменение публичной информации профиля</p>
+            </div>
+
+            <button type="button" class="admin-modal-close" onclick="closeMasterEditModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form method="POST" id="masterEditForm" class="admin-modal-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_public">
+
+            <label>Имя мастера / название студии</label>
+            <input class="admin-input" type="text" name="display_name" id="editMasterName" required>
+
+            <label>Адрес</label>
+            <input class="admin-input" type="text" name="address_text" id="editMasterAddress">
+
+            <label>О себе</label>
+            <textarea class="admin-textarea" name="bio" id="editMasterBio"></textarea>
+
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-btn light" onclick="closeMasterEditModal()">
+                    Отмена
+                </button>
+
+                <button type="submit" class="admin-btn">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.admin-master-link {
+    color: #202020;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-master-link:hover {
+    text-decoration: underline;
+}
+
+.admin-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 1000;
+}
+
+.admin-modal.active {
+    display: block;
+}
+
+.admin-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+}
+
+.admin-modal-card {
+    position: relative;
+    width: min(560px, calc(100vw - 32px));
+    margin: 80px auto;
+    background: #FFFFFF;
+    border-radius: 22px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    overflow: hidden;
+    animation: modalUp .2s ease;
+}
+
+.admin-modal-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.admin-modal-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 4px;
+}
+
+.admin-modal-header p {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.admin-modal-close {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 12px;
+    background: #F3F4F6;
+    color: #202020;
+    cursor: pointer;
+}
+
+.admin-modal-close:hover {
+    background: #202020;
+    color: #FFFFFF;
+}
+
+.admin-modal-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-modal-form label {
+    color: #6B7280;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+@keyframes modalUp {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+function openMasterEditModal(masterId, name, address, bio) {
+    const modal = document.getElementById('masterEditModal');
+    const form = document.getElementById('masterEditForm');
+
+    document.getElementById('editMasterName').value = name || '';
+    document.getElementById('editMasterAddress').value = address || '';
+    document.getElementById('editMasterBio').value = bio || '';
+
+    form.action = `/panel/masters/${masterId}/action/`;
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMasterEditModal() {
+    const modal = document.getElementById('masterEditModal');
+
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeMasterEditModal();
+    }
+});
+</script>
 {% endblock %}

@@ -1,0 +1,582 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Мастер {{ master.display_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1>{{ master.display_name|default:"Мастер" }}</h1>
+        <p>Подробная информация о мастере, услугах, портфолио и отзывах</p>
+    </div>
+
+    <div class="admin-actions">
+    <a href="{% url 'admin_masters' %}" class="admin-btn light">
+        <i class="fas fa-arrow-left"></i>
+            Назад
+        </a>
+
+        <a href="{% url 'admin_portfolio' %}?master_id={{ master.id }}" class="admin-btn light">
+            <i class="fas fa-images"></i>
+            Управлять портфолио
+        </a>
+
+        <a href="{% url 'admin_reviews' %}?master_id={{ master.id }}" class="admin-btn light">
+            <i class="fas fa-star"></i>
+            Модерировать отзывы
+        </a>
+
+        <button type="button"
+                class="admin-btn"
+                onclick="openMasterEditModal(
+                    '{{ master.id }}',
+                    '{{ master.display_name|default:""|escapejs }}',
+                    '{{ master.address_text|default:""|escapejs }}',
+                    '{{ master.bio|default:""|escapejs }}'
+                )">
+            Изменить данные
+        </button>
+    </div>
+</div>
+
+<div class="master-detail-grid">
+    <div class="admin-card master-profile-card">
+        <div class="master-cover"></div>
+
+        <div class="master-profile-main">
+          <div class="master-avatar">
+              {% if master.avatar %}
+                  <img src="{{ master.avatar.url }}" alt="">
+              {% else %}
+                  {{ master.display_name|first|default:"М" }}
+              {% endif %}
+          </div>
+
+          <div class="master-profile-text">
+              <h2>{{ master.display_name|default:"Мастер" }}</h2>
+
+              <div class="master-badges">
+                  {% if master.is_approved %}
+                      <span class="badge green">Подтверждён</span>
+                  {% else %}
+                      <span class="badge yellow">На проверке</span>
+                  {% endif %}
+
+                  {% if master.user.is_active %}
+                      <span class="badge green">Активен</span>
+                  {% else %}
+                      <span class="badge red">Заблокирован</span>
+                  {% endif %}
+              </div>
+          </div>
+      </div>
+
+        <div class="master-info-list">
+            <div>
+                <span>Email</span>
+                <strong>{{ master.user.email|default:"—" }}</strong>
+            </div>
+
+            <div>
+                <span>Телефон</span>
+                <strong>{{ master.user.phone|default:"—" }}</strong>
+            </div>
+
+            <div>
+                <span>Адрес</span>
+                <strong>{{ master.address_text|default:"Не указан" }}</strong>
+            </div>
+
+            <div>
+                <span>О себе</span>
+                <p>{{ master.bio|default:"Описание не добавлено" }}</p>
+            </div>
+        </div>
+
+        <div class="admin-actions master-profile-actions">
+            <form method="POST" action="{% url 'admin_master_action' master.id %}">
+                {% csrf_token %}
+                {% if master.is_approved %}
+                    <input type="hidden" name="action" value="hide">
+                    <button class="admin-btn yellow" type="submit">Скрыть мастера</button>
+                {% else %}
+                    <input type="hidden" name="action" value="approve">
+                    <button class="admin-btn green" type="submit">Подтвердить</button>
+                {% endif %}
+            </form>
+
+            <form method="POST" action="{% url 'admin_master_action' master.id %}">
+                {% csrf_token %}
+                {% if master.user.is_active %}
+                    <input type="hidden" name="action" value="block">
+                    <button class="admin-btn red" type="submit">Заблокировать</button>
+                {% else %}
+                    <input type="hidden" name="action" value="unblock">
+                    <button class="admin-btn green" type="submit">Разблокировать</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="stats-grid master-stats-grid">
+        <div class="stat-card">
+            <span>Услуг</span>
+            <strong>{{ stats.services_count }}</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Активных услуг</span>
+            <strong>{{ stats.active_services_count }}</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Фото в портфолио</span>
+            <strong>{{ stats.portfolio_count }}</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Средняя оценка</span>
+            <strong>{{ stats.avg_rating|floatformat:1 }}</strong>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card" style="margin-top:18px;">
+    <div class="admin-card-header">
+        <h3>Услуги мастера</h3>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Услуга</th>
+                    <th>Категория</th>
+                    <th>Длительность</th>
+                    <th>Стоимость</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>{{ service.name }}</td>
+                    <td>{{ service.category.name|default:"—" }}</td>
+                    <td>{{ service.duration_minutes }} мин</td>
+                    <td>{{ service.price|floatformat:0 }} ₽</td>
+                    <td>
+                        {% if service.is_active %}
+                            <span class="badge green">Активна</span>
+                        {% else %}
+                            <span class="badge red">Отключена</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-row">Услуг пока нет</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="admin-card" style="margin-top:18px;">
+    <div class="admin-card-header">
+        <h3>Портфолио</h3>
+
+        <a href="{% url 'admin_portfolio' %}?master_id={{ master.id }}" class="admin-btn light">
+            Управлять
+        </a>
+    </div>
+
+    <div class="admin-card-body">
+        <div class="master-portfolio-grid">
+            {% for item in portfolio %}
+                <div class="portfolio-item">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="">
+                    {% else %}
+                        <div class="portfolio-empty">Нет фото</div>
+                    {% endif %}
+
+                    <div class="portfolio-item-body">
+                        <p>{{ item.description|default:"Описание не добавлено"|truncatechars:80 }}</p>
+
+                        {% if item.is_hidden %}
+                            <span class="badge yellow">Скрыто</span>
+                        {% else %}
+                            <span class="badge green">Видно</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-row">Портфолио пока нет</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="admin-card" style="margin-top:18px;">
+    <div class="admin-card-header">
+        <h3>Отзывы</h3>
+
+        <a href="{% url 'admin_reviews' %}?master_id={{ master.id }}" class="admin-btn light">
+            Модерировать
+        </a>
+    </div>
+
+    <div class="admin-card-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Клиент</th>
+                    <th>Оценка</th>
+                    <th>Комментарий</th>
+                    <th>Дата</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for review in reviews %}
+                <tr>
+                    <td>{{ review.client.full_name|default:"Клиент" }}</td>
+                    <td>{{ review.rating }}/5</td>
+                    <td>{{ review.comment|default:"—"|truncatechars:100 }}</td>
+                    <td>{{ review.created_at|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        {% if review.is_blocked %}
+                            <span class="badge red">Скрыт</span>
+                        {% elif review.is_approved %}
+                            <span class="badge green">Опубликован</span>
+                        {% else %}
+                            <span class="badge yellow">На проверке</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-row">Отзывов пока нет</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="admin-modal" id="masterEditModal">
+    <div class="admin-modal-backdrop" onclick="closeMasterEditModal()"></div>
+
+    <div class="admin-modal-card">
+        <div class="admin-modal-header">
+            <div>
+                <h3>Редактировать мастера</h3>
+                <p>Изменение публичной информации профиля</p>
+            </div>
+
+            <button type="button" class="admin-modal-close" onclick="closeMasterEditModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form method="POST" id="masterEditForm" class="admin-modal-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_public">
+
+            <label>Имя мастера / название студии</label>
+            <input class="admin-input" type="text" name="display_name" id="editMasterName" required>
+
+            <label>Адрес</label>
+            <input class="admin-input" type="text" name="address_text" id="editMasterAddress">
+
+            <label>О себе</label>
+            <textarea class="admin-textarea" name="bio" id="editMasterBio"></textarea>
+
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-btn light" onclick="closeMasterEditModal()">Отмена</button>
+                <button type="submit" class="admin-btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.master-detail-grid {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.master-profile-card {
+    overflow: hidden;
+}
+
+.master-cover {
+    height: 110px;
+    background: #202020;
+}
+
+.master-profile-main {
+    padding: 0 20px 18px;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-top: -38px;
+}
+
+.master-profile-text {
+    padding-top: 38px;
+}
+
+.master-profile-text h2 {
+    font-size: 25px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.15;
+}
+
+
+.master-avatar {
+    width: 92px;
+    height: 92px;
+    min-width: 92px;
+    border-radius: 24px;
+    background: #FFFFFF;
+    border: 5px solid #FFFFFF;
+    box-shadow: 0 10px 24px rgba(0,0,0,.15);
+    color: #202020;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.master-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.master-profile-main h2 {
+    font-size: 25px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.master-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.master-info-list {
+    padding: 0 20px 20px;
+    display: grid;
+    gap: 14px;
+}
+
+.master-info-list span {
+    display: block;
+    color: #6B7280;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.master-info-list strong,
+.master-info-list p {
+    color: #202020;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.master-profile-actions {
+    padding: 0 20px 20px;
+}
+
+.master-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    margin-bottom: 0;
+    align-self: start;
+}
+
+.master-stats-grid .stat-card {
+    min-height: 110px;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.master-stats-grid .stat-card span {
+    font-size: 13px;
+    line-height: 1.35;
+    margin-bottom: 8px;
+}
+
+.master-stats-grid .stat-card strong {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.master-portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+}
+
+.portfolio-item {
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #FFFFFF;
+}
+
+.portfolio-item img,
+.portfolio-empty {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    background: #F7F7F5;
+}
+
+.portfolio-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.portfolio-item-body {
+    padding: 12px;
+}
+
+.portfolio-item-body p {
+    color: #6B7280;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.admin-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 1000;
+}
+
+.admin-modal.active {
+    display: block;
+}
+
+.admin-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+}
+
+.admin-modal-card {
+    position: relative;
+    width: min(560px, calc(100vw - 32px));
+    margin: 80px auto;
+    background: #FFFFFF;
+    border-radius: 22px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    overflow: hidden;
+}
+
+.admin-modal-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.admin-modal-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 4px;
+}
+
+.admin-modal-header p {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.admin-modal-close {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 12px;
+    background: #F3F4F6;
+    color: #202020;
+    cursor: pointer;
+}
+
+.admin-modal-close:hover {
+    background: #202020;
+    color: #FFFFFF;
+}
+
+.admin-modal-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-modal-form label {
+    color: #6B7280;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+@media (max-width: 1000px) {
+    .master-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .master-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+
+<script>
+function openMasterEditModal(masterId, name, address, bio) {
+    const modal = document.getElementById('masterEditModal');
+    const form = document.getElementById('masterEditForm');
+
+    document.getElementById('editMasterName').value = name || '';
+    document.getElementById('editMasterAddress').value = address || '';
+    document.getElementById('editMasterBio').value = bio || '';
+
+    form.action = `/panel/masters/${masterId}/action/`;
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMasterEditModal() {
+    const modal = document.getElementById('masterEditModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+</script>
+{% endblock %}

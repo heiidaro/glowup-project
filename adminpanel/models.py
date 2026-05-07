@@ -170,3 +170,76 @@ class SupportMessage(models.Model):
         db_table = 'support_messages'
         managed = False
         ordering = ['created_at']
+
+
+class NotificationCampaign(models.Model):
+    TARGETS = [
+        ('all', 'Все пользователи'),
+        ('clients', 'Клиенты'),
+        ('masters', 'Мастера'),
+        ('admins', 'Администраторы'),
+    ]
+
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='sender_id',
+        related_name='sent_notification_campaigns'
+    )
+
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    target = models.CharField(max_length=30, choices=TARGETS, default='all')
+    sent_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notification_campaigns'
+        managed = False
+        ordering = ['-created_at']
+
+
+class UserNotification(models.Model):
+    TYPES = [
+        ('system', 'Системное'),
+        ('booking', 'Запись'),
+        ('support', 'Поддержка'),
+        ('complaint', 'Жалоба'),
+        ('chat', 'Сообщение'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        db_column='user_id',
+        related_name='user_notifications'
+    )
+
+    campaign = models.ForeignKey(
+        NotificationCampaign,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='campaign_id',
+        related_name='notifications'
+    )
+
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(
+        max_length=50, choices=TYPES, default='system')
+    object_type = models.CharField(max_length=50, null=True, blank=True)
+    object_id = models.BigIntegerField(null=True, blank=True)
+
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'user_notifications'
+        managed = False
+        ordering = ['-created_at']

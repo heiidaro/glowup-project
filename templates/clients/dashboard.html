@@ -9,7 +9,13 @@
         <h1>Добро пожаловать, {{ client.full_name }}!</h1>
     </div>
     <div class="header-actions">
-        <button class="icon-btn"><i class="fas fa-bell"></i></button>
+        <button type="button" class="icon-btn notification-trigger-btn" onclick="openNotificationsModal()" title="Уведомления">
+            <i class="fas fa-bell"></i>
+
+            {% if unread_notifications_count > 0 %}
+                <span class="notification-dot">{{ unread_notifications_count }}</span>
+            {% endif %}
+        </button>
         <a href="{% url 'user_support' %}" class="icon-btn support-help-btn" title="Поддержка">
             <i class="fas fa-question-circle"></i>
         </a>
@@ -439,6 +445,101 @@
     <input type="hidden" name="year" id="year-input" value="{{ current_year }}">
     <input type="hidden" name="date" id="date-input" value="{{ selected_date }}">
 </form>
+<div class="notifications-modal" id="notificationsModal">
+    <div class="notifications-modal-backdrop" onclick="closeNotificationsModal()"></div>
+
+    <div class="notifications-modal-card">
+        <div class="notifications-modal-header">
+            <div>
+                <h3>Уведомления</h3>
+                <p>
+                    {% if unread_notifications_count > 0 %}
+                        {{ unread_notifications_count }} новых уведомлений
+                    {% else %}
+                        Новых уведомлений нет
+                    {% endif %}
+                </p>
+            </div>
+
+            <button type="button" class="notifications-modal-close" onclick="closeNotificationsModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="notifications-modal-body">
+            {% if unread_notifications_count > 0 %}
+                <form method="POST" action="{% url 'mark_all_notifications_read' %}" class="notifications-read-all-form">
+                    {% csrf_token %}
+                    <button type="submit" class="notifications-read-all-btn">
+                        Отметить все прочитанными
+                    </button>
+                </form>
+            {% endif %}
+
+            <div class="notifications-mini-list">
+                {% for item in latest_user_notifications %}
+                    <div class="notifications-mini-item {% if not item.is_read %}unread{% endif %}">
+                        <div class="notifications-mini-icon">
+                            {% if item.notification_type == 'booking' %}
+                                <i class="fas fa-calendar-check"></i>
+                            {% elif item.notification_type == 'support' %}
+                                <i class="fas fa-headset"></i>
+                            {% elif item.notification_type == 'complaint' %}
+                                <i class="fas fa-flag"></i>
+                            {% elif item.notification_type == 'chat' %}
+                                <i class="fas fa-comment"></i>
+                            {% else %}
+                                <i class="fas fa-bell"></i>
+                            {% endif %}
+                        </div>
+
+                        <div class="notifications-mini-content">
+                            <div class="notifications-mini-top">
+                                <h4>{{ item.title }}</h4>
+                                <span>{{ item.created_at|date:"d.m.Y H:i" }}</span>
+                            </div>
+
+                            <p>{{ item.message }}</p>
+
+                            <div class="notifications-mini-bottom">
+                                {% if item.notification_type == 'booking' %}
+                                    <span>Запись</span>
+                                {% elif item.notification_type == 'support' %}
+                                    <span>Поддержка</span>
+                                {% elif item.notification_type == 'complaint' %}
+                                    <span>Жалоба</span>
+                                {% elif item.notification_type == 'chat' %}
+                                    <span>Сообщение</span>
+                                {% else %}
+                                    <span>Системное</span>
+                                {% endif %}
+
+                                {% if not item.is_read %}
+                                    <form method="POST" action="{% url 'mark_notification_read' item.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit">Прочитано</button>
+                                    </form>
+                                {% else %}
+                                    <span>Прочитано</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="notifications-mini-empty">
+                        <i class="fas fa-bell-slash"></i>
+                        <h4>Уведомлений пока нет</h4>
+                        <p>Новые события будут отображаться здесь.</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <a href="{% url 'user_notifications' %}" class="notifications-full-link">
+                Открыть все уведомления
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -1135,6 +1236,290 @@ button.icon-btn:hover {
 .support-help-btn {
     flex-shrink: 0;
 }
+
+.notification-trigger-btn {
+    position: relative;
+}
+
+.notification-dot {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+
+    border-radius: 999px;
+    background: #EF4444;
+    color: #FFFFFF;
+
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 19px;
+    text-align: center;
+
+    border: 2px solid #FFFFFF;
+}
+
+.notifications-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 2000;
+}
+
+.notifications-modal.active {
+    display: block;
+}
+
+.notifications-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .35);
+}
+
+.notifications-modal-card {
+    position: absolute;
+    top: 78px;
+    right: 28px;
+
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 110px);
+
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 22px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, .20);
+
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.notifications-modal-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #E5E7EB;
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.notifications-modal-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 4px;
+}
+
+.notifications-modal-header p {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+.notifications-modal-close {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 12px;
+    background: #F3F4F6;
+    color: #202020;
+    cursor: pointer;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notifications-modal-close:hover {
+    background: #202020;
+    color: #FFFFFF;
+}
+
+.notifications-modal-body {
+    padding: 14px;
+    overflow: auto;
+}
+
+.notifications-read-all-form {
+    margin-bottom: 10px;
+}
+
+.notifications-read-all-btn {
+    width: 100%;
+    min-height: 38px;
+
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+
+    background: #FFFFFF;
+    color: #202020;
+
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.notifications-read-all-btn:hover {
+    background: #202020;
+    color: #FFFFFF;
+    border-color: #202020;
+}
+
+.notifications-mini-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notifications-mini-item {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 10px;
+
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+}
+
+.notifications-mini-item.unread {
+    background: #FFFBEB;
+    border-color: #FDE68A;
+}
+
+.notifications-mini-icon {
+    width: 38px;
+    height: 38px;
+
+    border-radius: 13px;
+    background: #202020;
+    color: #FFFFFF;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notifications-mini-content {
+    min-width: 0;
+}
+
+.notifications-mini-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.notifications-mini-top h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #202020;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notifications-mini-top span {
+    color: #6B7280;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.notifications-mini-content p {
+    color: #4B5563;
+    font-size: 13px;
+    line-height: 1.4;
+
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.notifications-mini-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin-top: 9px;
+}
+
+.notifications-mini-bottom span {
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #F3F4F6;
+    color: #4B5563;
+    font-size: 11px;
+}
+
+.notifications-mini-bottom form {
+    margin: 0;
+}
+
+.notifications-mini-bottom button {
+    border: none;
+    border-radius: 999px;
+    padding: 6px 9px;
+
+    background: #202020;
+    color: #FFFFFF;
+
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.notifications-mini-empty {
+    padding: 40px 14px;
+    text-align: center;
+    color: #6B7280;
+}
+
+.notifications-mini-empty i {
+    font-size: 34px;
+    color: #D1D5DB;
+    margin-bottom: 10px;
+}
+
+.notifications-mini-empty h4 {
+    color: #202020;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.notifications-mini-empty p {
+    font-size: 13px;
+}
+
+.notifications-full-link {
+    margin-top: 12px;
+    min-height: 40px;
+
+    border-radius: 12px;
+    background: #202020;
+    color: #FFFFFF;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .notifications-modal-card {
+        top: 70px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+    }
+}
 </style>
 
 <script>
@@ -1280,5 +1665,30 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
     }
 });
 {% endif %}
+</script>
+<script>
+function openNotificationsModal() {
+    const modal = document.getElementById('notificationsModal');
+
+    if (!modal) return;
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeNotificationsModal() {
+    const modal = document.getElementById('notificationsModal');
+
+    if (!modal) return;
+
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeNotificationsModal();
+    }
+});
 </script>
 {% endblock %}

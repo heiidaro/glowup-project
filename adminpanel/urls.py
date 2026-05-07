@@ -9,6 +9,8 @@ urlpatterns = [
          views.admin_user_action, name='admin_user_action'),
 
     path('masters/', views.admin_masters, name='admin_masters'),
+    path('masters/<int:master_id>/', views.admin_master_detail,
+         name='admin_master_detail'),
     path('masters/<int:master_id>/action/',
          views.admin_master_action, name='admin_master_action'),
 

@@ -380,7 +380,8 @@ def master_dashboard(request):
     ).order_by('date', 'time')[:5]
 
     portfolio_items = Portfolio.objects.filter(
-        master=master_profile
+        master=master_profile,
+        is_hidden=False
     ).order_by('-created_at')[:3]
 
     master_services = Service.objects.filter(
@@ -791,7 +792,10 @@ def master_portfolio(request):
         return redirect('home')
 
     master_profile = MasterProfile.objects.get(user=request.user)
-    portfolio_items = Portfolio.objects.filter(master=master_profile)
+    portfolio_items = Portfolio.objects.filter(
+        master=master_profile,
+        is_hidden=False
+    ).order_by('-created_at')
 
     context = {
         'portfolio_items': portfolio_items,
@@ -1002,7 +1006,9 @@ def master_public_profile(request, master_id):
     ).select_related('category').order_by('price')
 
     portfolio_items = Portfolio.objects.filter(
-        master=master).order_by('-created_at')
+        master=master,
+        is_hidden=False
+    ).order_by('-created_at')
 
     reviews = Review.objects.filter(
         master=master,

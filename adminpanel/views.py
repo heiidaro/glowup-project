@@ -12,7 +12,7 @@ from masters.models import MasterProfile, Portfolio, Service, ServiceCategory
 from bookings.models import Booking, PostResponse
 from reviews.models import Review
 from notifications.models import Notification
-from .models import AdminAuditLog, Complaint, SupportTicket, SupportMessage
+from .models import AdminAuditLog, Complaint, SupportTicket, SupportMessage, NotificationCampaign, UserNotification
 
 
 def admin_required(view_func):
@@ -300,6 +300,53 @@ def admin_masters(request):
 
 
 @admin_required
+def admin_master_detail(request, master_id):
+    master = get_object_or_404(
+        MasterProfile.objects.select_related('user'),
+        id=master_id
+    )
+
+    services = Service.objects.filter(
+        master=master
+    ).select_related('category').order_by('-created_at')
+
+    portfolio = Portfolio.objects.filter(
+        master=master
+    ).order_by('-created_at')
+
+    reviews = Review.objects.filter(
+        master=master
+    ).select_related('client').order_by('-created_at')
+
+    visible_reviews = reviews.filter(
+        is_approved=True,
+        is_blocked=False
+    )
+
+    avg_rating = visible_reviews.aggregate(
+        avg=Avg('rating')
+    )['avg'] or 0
+
+    stats = {
+        'services_count': services.count(),
+        'active_services_count': services.filter(is_active=True).count(),
+        'portfolio_count': portfolio.count(),
+        'visible_portfolio_count': portfolio.filter(is_hidden=False).count(),
+        'reviews_count': reviews.count(),
+        'visible_reviews_count': visible_reviews.count(),
+        'avg_rating': avg_rating,
+    }
+
+    return render(request, 'adminpanel/master_detail.html', {
+        'master': master,
+        'services': services,
+        'portfolio': portfolio,
+        'reviews': reviews,
+        'stats': stats,
+    })
+
+
+@admin_required
 def admin_master_action(request, master_id):
     master = get_object_or_404(MasterProfile, id=master_id)
 
@@ -463,20 +510,67 @@ def admin_post_action(request, post_id):
 
 @admin_required
 def admin_portfolio(request):
-    portfolio = Portfolio.objects.select_related(
-        'master', 'master__user').order_by('-created_at')
+    master_id = request.GET.get('master_id', '').strip()
+
+    portfolio_items = Portfolio.objects.select_related(
+        'master',
+        'master__user'
+    ).order_by('master__display_name', '-created_at')
 
     q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    selected_master = None
+
+    if master_id:
+        selected_master = MasterProfile.objects.select_related(
+            'user').filter(id=master_id).first()
+        portfolio_items = portfolio_items.filter(master_id=master_id)
 
     if q:
-        portfolio = portfolio.filter(
+        portfolio_items = portfolio_items.filter(
             Q(master__display_name__icontains=q) |
+            Q(master__user__email__icontains=q) |
+            Q(master__user__phone__icontains=q) |
             Q(description__icontains=q)
         )
 
+    if status == 'visible':
+        portfolio_items = portfolio_items.filter(is_hidden=False)
+
+    elif status == 'hidden':
+        portfolio_items = portfolio_items.filter(is_hidden=True)
+
+    grouped = {}
+
+    for item in portfolio_items:
+        item_master_id = item.master_id
+
+        if item_master_id not in grouped:
+            grouped[item_master_id] = {
+                'master': item.master,
+                'items': [],
+                'total_count': 0,
+                'visible_count': 0,
+                'hidden_count': 0,
+            }
+
+        grouped[item_master_id]['items'].append(item)
+        grouped[item_master_id]['total_count'] += 1
+
+        if item.is_hidden:
+            grouped[item_master_id]['hidden_count'] += 1
+        else:
+            grouped[item_master_id]['visible_count'] += 1
+
+    grouped_masters = list(grouped.values())
+
     return render(request, 'adminpanel/portfolio.html', {
-        'portfolio': portfolio,
+        'grouped_masters': grouped_masters,
         'q': q,
+        'status': status,
+        'master_id': master_id,
+        'selected_master': selected_master,
     })
 
 
@@ -511,32 +605,48 @@ def admin_portfolio_action(request, item_id):
 
 @admin_required
 def admin_reviews(request):
+    master_id = request.GET.get('master_id', '').strip()
+
     reviews = Review.objects.select_related(
-        'client', 'master', 'booking').order_by('-created_at')
+        'client',
+        'master',
+        'master__user'
+    ).order_by('-created_at')
 
-    status = request.GET.get('status', '').strip()
     q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
 
-    if status == 'pending':
-        reviews = reviews.filter(is_approved=False, is_blocked=False)
+    selected_master = None
 
-    if status == 'approved':
-        reviews = reviews.filter(is_approved=True, is_blocked=False)
-
-    if status == 'blocked':
-        reviews = reviews.filter(is_blocked=True)
+    if master_id:
+        selected_master = MasterProfile.objects.select_related(
+            'user').filter(id=master_id).first()
+        reviews = reviews.filter(master_id=master_id)
 
     if q:
         reviews = reviews.filter(
             Q(comment__icontains=q) |
             Q(client__full_name__icontains=q) |
-            Q(master__display_name__icontains=q)
+            Q(master__display_name__icontains=q) |
+            Q(master__user__email__icontains=q) |
+            Q(master__user__phone__icontains=q)
         )
+
+    if status == 'pending':
+        reviews = reviews.filter(is_approved=False, is_blocked=False)
+
+    elif status == 'approved':
+        reviews = reviews.filter(is_approved=True, is_blocked=False)
+
+    elif status == 'blocked':
+        reviews = reviews.filter(is_blocked=True)
 
     return render(request, 'adminpanel/reviews.html', {
         'reviews': reviews,
-        'status': status,
         'q': q,
+        'status': status,
+        'master_id': master_id,
+        'selected_master': selected_master,
     })
 
 
@@ -663,48 +773,88 @@ def admin_delete_category(request, category_id):
 
 @admin_required
 def admin_notifications(request):
+    campaigns = NotificationCampaign.objects.select_related(
+        'sender'
+    ).order_by('-created_at')
+
     if request.method == 'POST':
-        target = request.POST.get('target')
         title = request.POST.get('title', '').strip()
-        message = request.POST.get('message', '').strip()
+        message_text = request.POST.get('message', '').strip()
+
+        target = (
+            request.POST.get('target')
+            or request.POST.get('recipient_group')
+            or request.POST.get('role')
+            or 'all'
+        ).strip()
+
+        if not title:
+            messages.error(request, 'Укажите заголовок уведомления')
+            return redirect('admin_notifications')
+
+        if not message_text:
+            messages.error(request, 'Введите текст уведомления')
+            return redirect('admin_notifications')
 
         users = User.objects.filter(is_active=True)
 
-        if target == 'clients':
+        if target in ['clients', 'client']:
             users = users.filter(role='client')
+            target = 'clients'
 
-        elif target == 'masters':
+        elif target in ['masters', 'master']:
             users = users.filter(role='master')
+            target = 'masters'
 
-        elif target == 'admins':
+        elif target in ['admins', 'admin']:
             users = users.filter(role='admin')
+            target = 'admins'
 
-        if title and message:
-            notifications = [
-                Notification(
-                    user=user,
-                    notification_type='system',
-                    title=title,
-                    message=message,
-                    link=None
-                )
-                for user in users
-            ]
+        else:
+            target = 'all'
 
-            Notification.objects.bulk_create(notifications)
+        users = list(users)
 
-            write_admin_log(request, 'send_notification',
-                            'notification', comment=f'{target}: {title}')
-            messages.success(
-                request, f'Уведомления отправлены: {len(notifications)}')
+        campaign = NotificationCampaign.objects.create(
+            sender=request.user,
+            title=title,
+            message=message_text,
+            target=target,
+            sent_count=len(users)
+        )
+
+        notifications = [
+            UserNotification(
+                user=user,
+                campaign=campaign,
+                title=title,
+                message=message_text,
+                notification_type='system',
+                is_read=False
+            )
+            for user in users
+        ]
+
+        if notifications:
+            UserNotification.objects.bulk_create(notifications, batch_size=500)
+
+        write_admin_log(
+            request,
+            'send_notification_campaign',
+            'notification_campaign',
+            campaign.id,
+            f'Рассылка: {title}. Получателей: {len(users)}'
+        )
+
+        messages.success(
+            request,
+            f'Уведомление отправлено. Получателей: {len(users)}'
+        )
 
         return redirect('admin_notifications')
 
-    recent_notifications = Notification.objects.select_related(
-        'user').order_by('-created_at')[:100]
-
     return render(request, 'adminpanel/notifications.html', {
-        'recent_notifications': recent_notifications,
+        'campaigns': campaigns,
     })
 
 

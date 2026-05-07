@@ -5,10 +5,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 
 from accounts.models import User
-from adminpanel.models import SupportTicket, SupportMessage, Complaint
+from adminpanel.models import SupportTicket, SupportMessage, Complaint, UserNotification
 from clients.models import ClientProfile, ClientPost
 from masters.models import MasterProfile
 from reviews.models import Review
+from django.views.decorators.http import require_POST
 
 
 def home(request):
@@ -287,3 +288,65 @@ def create_complaint(request):
         'selected_review': selected_review,
         'selected_master': selected_master,
     })
+
+
+@login_required
+def user_notifications(request):
+    notifications = UserNotification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')
+
+    unread_count = notifications.filter(is_read=False).count()
+
+    return render(request, 'core/notifications.html', {
+        'notifications': notifications,
+        'unread_count': unread_count,
+    })
+
+
+@login_required
+@require_POST
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(
+        UserNotification,
+        id=notification_id,
+        user=request.user
+    )
+
+    if not notification.is_read:
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save(update_fields=['is_read', 'read_at'])
+
+    return redirect('user_notifications')
+
+
+@login_required
+@require_POST
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(
+        UserNotification,
+        id=notification_id,
+        user=request.user
+    )
+
+    if not notification.is_read:
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save(update_fields=['is_read', 'read_at'])
+
+    return redirect(request.META.get('HTTP_REFERER', 'user_notifications'))
+
+
+@login_required
+@require_POST
+def mark_all_notifications_read(request):
+    UserNotification.objects.filter(
+        user=request.user,
+        is_read=False
+    ).update(
+        is_read=True,
+        read_at=timezone.now()
+    )
+
+    return redirect(request.META.get('HTTP_REFERER', 'user_notifications'))

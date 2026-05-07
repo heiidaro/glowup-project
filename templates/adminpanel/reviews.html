@@ -10,11 +10,31 @@
     </div>
 </div>
 
+{% if selected_master %}
+<div class="admin-card" style="margin-bottom:18px;">
+    <div class="admin-card-body" style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div>
+            <strong>Открыты отзывы мастера: {{ selected_master.display_name|default:"Мастер" }}</strong>
+            <p style="color:#6B7280;font-size:13px;margin-top:4px;">
+                {{ selected_master.user.email|default:selected_master.user.phone|default:"Контакт не указан" }}
+            </p>
+        </div>
+
+        <a href="{% url 'admin_reviews' %}" class="admin-btn light">
+            Показать все отзывы
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <div class="admin-card">
     <div class="admin-card-header">
         <h3>Список отзывов</h3>
 
         <form method="GET" class="admin-filters">
+          {% if master_id %}
+              <input type="hidden" name="master_id" value="{{ master_id }}">
+          {% endif %}
             <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Клиент, мастер или текст">
 
             <select class="admin-select" name="status">
