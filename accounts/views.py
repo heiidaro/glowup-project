@@ -14,10 +14,14 @@ from .forms import PasswordResetRequestForm, SetNewPasswordForm
 from .services import create_and_send_password_reset
 from django.contrib.auth.decorators import login_required
 
+from django.utils import timezone
+from datetime import timedelta
+
 
 def register_view(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
+
         if form.is_valid():
             contact = form.cleaned_data["contact"]
             role = form.cleaned_data["role"]
@@ -27,16 +31,9 @@ def register_view(request):
             email = contact.lower() if is_email else None
             phone = None if is_email else contact
 
-            # проверяем, что такого пользователя ещё нет
-            if email and User.objects.filter(email=email).exists():
-                form.add_error(
-                    "contact", "Пользователь с таким email уже существует")
-            elif phone and User.objects.filter(phone=phone).exists():
-                form.add_error(
-                    "contact", "Пользователь с таким телефоном уже существует")
-            else:
-                channel = PendingSignup.CHANNEL_EMAIL if email else PendingSignup.CHANNEL_PHONE
+            channel = PendingSignup.CHANNEL_EMAIL if email else PendingSignup.CHANNEL_PHONE
 
+            try:
                 pending = create_pending_signup(
                     channel=channel,
                     email=email,
@@ -44,9 +41,15 @@ def register_view(request):
                     role=role,
                     raw_password=password,
                 )
+            except RuntimeError:
+                form.add_error(
+                    "contact",
+                    "Не удалось отправить код подтверждения. Проверьте интернет, VPN или настройки почты."
+                )
+                return render(request, "accounts/register.html", {"form": form})
 
-                pid = urlsafe_base64_encode(force_bytes(str(pending.id)))
-                return redirect(f"/verify/?pid={pid}")
+            pid = urlsafe_base64_encode(force_bytes(str(pending.id)))
+            return redirect(f"/verify/?pid={pid}")
     else:
         form = RegisterForm()
 
@@ -170,21 +173,27 @@ def resend_code_view(request):
         return redirect("register")
 
     if pending.is_expired():
-        # можно создать новый pending, но проще отправить на регистрацию заново
         pending.delete()
         return redirect("register")
+
+    if pending.created_at and timezone.now() - pending.created_at < timedelta(seconds=60):
+        messages.error(request, "Повторно отправить код можно через 1 минуту")
+        return redirect(f"/verify/?pid={pid}")
 
     code = generate_code(6)
     pending.code_hash = make_password(code)
     pending.attempts = 0
     pending.expires_at = PendingSignup.default_expires()
-    pending.save(update_fields=["code_hash", "attempts", "expires_at"])
+    pending.created_at = timezone.now()
+    pending.save(update_fields=["code_hash",
+                 "attempts", "expires_at", "created_at"])
 
     if pending.channel == PendingSignup.CHANNEL_EMAIL:
         send_verification_email(pending.email, code)
     else:
         send_verification_sms_stub(pending.phone, code)
 
+    messages.success(request, "Код отправлен повторно")
     return redirect(f"/verify/?pid={pid}")
 
 

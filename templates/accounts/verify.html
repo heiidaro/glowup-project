@@ -12,6 +12,13 @@
     <section class="auth-card">
       <h1 class="auth-title">Подтвердите {% if channel == "email" %}email{% else %}номер телефона{% endif %}</h1>
       <p class="auth-subtitle">Мы отправили код на: <b>{{ contact }}</b></p>
+      {% if messages %}
+        {% for message in messages %}
+          <div class="auth-error">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
 
       <form method="post" class="auth-form">
         {% csrf_token %}

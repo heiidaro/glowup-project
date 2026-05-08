@@ -37,6 +37,52 @@ def normalize_contact(value):
     return f"+{digits}"
 
 
+def russian_password_errors(password):
+    errors = []
+
+    if len(password) < 8:
+        errors.append("Пароль должен содержать минимум 8 символов.")
+
+    if password.isdigit():
+        errors.append("Пароль не должен состоять только из цифр.")
+
+    common_passwords = {
+        "password",
+        "qwerty",
+        "qwerty123",
+        "12345678",
+        "123456789",
+        "11111111",
+        "00000000",
+        "admin123",
+        "adminadmin",
+        "пароль",
+    }
+
+    if password.lower() in common_passwords:
+        errors.append(
+            "Пароль слишком простой. Придумайте более надёжный пароль.")
+
+    try:
+        validate_password(password)
+    except ValidationError as error:
+        for message in error.messages:
+            text = str(message)
+
+            if "too similar" in text.lower():
+                errors.append("Пароль слишком похож на ваши личные данные.")
+            elif "too short" in text.lower():
+                errors.append("Пароль слишком короткий.")
+            elif "too common" in text.lower():
+                errors.append("Пароль слишком распространённый.")
+            elif "entirely numeric" in text.lower():
+                errors.append("Пароль не должен состоять только из цифр.")
+            else:
+                errors.append(text)
+
+    return list(dict.fromkeys(errors))
+
+
 class RegisterForm(forms.Form):
     contact = forms.CharField(
         label="Email или телефон",
@@ -96,21 +142,16 @@ class RegisterForm(forms.Form):
     def clean_password1(self):
         password = self.cleaned_data.get("password1") or ""
 
-        if len(password) < 8:
-            raise ValidationError("Пароль должен содержать минимум 8 символов")
+        errors = russian_password_errors(password)
 
-        if password.isdigit():
-            raise ValidationError("Пароль не должен состоять только из цифр")
-
-        try:
-            validate_password(password)
-        except ValidationError as error:
-            raise ValidationError(error.messages)
+        if errors:
+            raise ValidationError(errors)
 
         return password
 
     def clean(self):
         cleaned = super().clean()
+
         p1 = cleaned.get("password1")
         p2 = cleaned.get("password2")
 
@@ -194,21 +235,16 @@ class SetNewPasswordForm(forms.Form):
     def clean_password1(self):
         password = self.cleaned_data.get("password1") or ""
 
-        if len(password) < 8:
-            raise ValidationError("Пароль должен содержать минимум 8 символов")
+        errors = russian_password_errors(password)
 
-        if password.isdigit():
-            raise ValidationError("Пароль не должен состоять только из цифр")
-
-        try:
-            validate_password(password)
-        except ValidationError as error:
-            raise ValidationError(error.messages)
+        if errors:
+            raise ValidationError(errors)
 
         return password
 
     def clean(self):
         cleaned = super().clean()
+
         p1 = cleaned.get("password1")
         p2 = cleaned.get("password2")
 

@@ -224,10 +224,16 @@
             
             <div class="form-group">
                 <label for="phone">Телефон</label>
-                <input type="tel" id="phone" name="phone" 
-                       placeholder="Введите номер телефона" 
-                       value="{{ user.phone|default:'' }}"
-                       {% if user.phone %}readonly class="readonly"{% endif %}>
+                <input type="tel"
+                  id="phone"
+                  name="phone"
+                  class="phone-mask-input {% if user.phone %}readonly{% endif %}"
+                  placeholder="+7 (___) ___-__-__"
+                  value="{{ user.phone|default:'' }}"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  maxlength="18"
+                  {% if user.phone %}readonly{% endif %}>
                 {% if user.phone %}
                 <small class="field-note">Телефон уже указан при регистрации</small>
                 {% endif %}
@@ -268,9 +274,15 @@
             
             <div class="form-group">
                 <label for="settings_phone">Телефон</label>
-                <input type="tel" id="settings_phone" name="phone" 
-                       placeholder="Введите номер телефона" 
-                       value="{{ user.phone|default:'' }}">
+                <input type="tel"
+                  id="settings_phone"
+                  name="phone"
+                  class="phone-mask-input"
+                  placeholder="+7 (___) ___-__-__"
+                  value="{{ user.phone|default:'' }}"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  maxlength="18">
             </div>
             
             <div class="divider"></div>
@@ -1671,6 +1683,116 @@ button.icon-btn:hover {
 </style>
 
 <script>
+  function getPhoneDigits(value) {
+    return String(value || '').replace(/\D/g, '');
+}
+
+function normalizePhoneForSave(value) {
+    let digits = getPhoneDigits(value);
+
+    if (digits.startsWith('8') && digits.length === 11) {
+        digits = '7' + digits.slice(1);
+    }
+
+    if (digits.length === 10) {
+        digits = '7' + digits;
+    }
+
+    if (digits.startsWith('7') && digits.length === 11) {
+        return '+' + digits;
+    }
+
+    return value;
+}
+
+function formatRuPhone(value) {
+    let digits = getPhoneDigits(value);
+
+    if (digits.startsWith('8')) {
+        digits = '7' + digits.slice(1);
+    }
+
+    if (!digits.startsWith('7')) {
+        digits = '7' + digits;
+    }
+
+    digits = digits.slice(0, 11);
+
+    const p1 = digits.slice(1, 4);
+    const p2 = digits.slice(4, 7);
+    const p3 = digits.slice(7, 9);
+    const p4 = digits.slice(9, 11);
+
+    let result = '+7';
+
+    if (p1) {
+        result += ' (' + p1;
+    }
+
+    if (p1.length === 3) {
+        result += ')';
+    }
+
+    if (p2) {
+        result += ' ' + p2;
+    }
+
+    if (p3) {
+        result += '-' + p3;
+    }
+
+    if (p4) {
+        result += '-' + p4;
+    }
+
+    return result;
+}
+
+function initPhoneMasks() {
+    const inputs = document.querySelectorAll('.phone-mask-input');
+
+    inputs.forEach(input => {
+        input.value = formatRuPhone(input.value);
+
+        input.addEventListener('focus', function () {
+            if (!this.value.trim()) {
+                this.value = '+7';
+            }
+        });
+
+        input.addEventListener('input', function () {
+            this.value = formatRuPhone(this.value);
+            this.setSelectionRange(this.value.length, this.value.length);
+        });
+
+        input.addEventListener('keydown', function (event) {
+            if (
+                this.selectionStart <= 2 &&
+                ['Backspace', 'Delete'].includes(event.key)
+            ) {
+                event.preventDefault();
+            }
+        });
+    });
+}
+
+function normalizePhonesBeforeSubmit() {
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function () {
+            this.querySelectorAll('.phone-mask-input').forEach(input => {
+                input.value = normalizePhoneForSave(input.value);
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    initPhoneMasks();
+    normalizePhonesBeforeSubmit();
+});
+
+
+
 // Функции для модального окна настроек
 function openSettingsModal() {
     document.getElementById('settingsModal').style.display = 'flex';

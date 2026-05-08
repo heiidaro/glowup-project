@@ -129,9 +129,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Yekaterinburg'
 
 USE_I18N = True
 
@@ -156,8 +156,16 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "GlowUp <no-reply@glowup.local>"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.yandex.ru"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "glowup-sup@yandex.ru"
+EMAIL_HOST_PASSWORD = "gjxbjvxtvwoftkwf"
+
+DEFAULT_FROM_EMAIL = "GlowUp <glowup-sup@yandex.ru>"
 
 LOGIN_URL = 'login'  # URL для входа
 LOGIN_REDIRECT_URL = 'client_dashboard'  # Куда перенаправлять после входа

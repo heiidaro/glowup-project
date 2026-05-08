@@ -9,18 +9,42 @@ from django.urls import reverse
 from .models import VerificationCode
 from .models import PendingSignup
 from .models import PasswordResetToken
+import logging
+from django.core.mail import BadHeaderError
+from socket import timeout as SocketTimeout
+import logging
+from smtplib import SMTPException, SMTPAuthenticationError
+
+
+logger = logging.getLogger(__name__)
 
 
 def generate_code(length=6) -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(length))
 
 
-def send_verification_email(email: str, code: str) -> None:
-    subject = "Glow Up — код подтверждения"
-    message = f"Ваш код подтверждения: {code}\nКод действует 10 минут."
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL",
-                         None) or "no-reply@glowup.local"
-    send_mail(subject, message, from_email, [email], fail_silently=False)
+def send_verification_email(email, code):
+    subject = "Код подтверждения GlowUp"
+    message = (
+        f"Ваш код подтверждения: {code}\n\n"
+        f"Код действует 10 минут.\n"
+        f"Если вы не регистрировались на GlowUp, просто проигнорируйте это письмо."
+    )
+
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return True
+
+    except (SMTPException, OSError, SocketTimeout, BadHeaderError) as error:
+        logger.exception(
+            "Ошибка отправки кода подтверждения на email: %s", error)
+        return False
 
 
 def send_verification_sms_stub(phone: str, code: str) -> None:
@@ -41,7 +65,13 @@ def create_pending_signup(*, channel: str, email: str | None, phone: str | None,
     )
 
     if channel == PendingSignup.CHANNEL_EMAIL:
-        send_verification_email(email, code)
+        is_sent = send_verification_email(email, code)
+
+        if not is_sent:
+            pending.delete()
+            raise RuntimeError(
+                "Не удалось отправить код на email. Проверьте подключение к SMTP-серверу."
+            )
     else:
         send_verification_sms_stub(phone, code)
 
@@ -61,12 +91,28 @@ def verify_pending_code(pending: PendingSignup, code: str) -> bool:
     return check_password(code, pending.code_hash)
 
 
-def send_verification_email(email: str, code: str) -> None:
-    subject = "Glow Up — код подтверждения"
-    message = f"Ваш код подтверждения: {code}\nКод действует 10 минут."
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL",
-                         None) or "no-reply@glowup.local"
-    send_mail(subject, message, from_email, [email], fail_silently=False)
+def send_verification_email(email, code):
+    subject = "Код подтверждения GlowUp"
+    message = (
+        f"Ваш код подтверждения: {code}\n\n"
+        f"Код действует 10 минут.\n"
+        f"Если вы не регистрировались на GlowUp, просто проигнорируйте это письмо."
+    )
+
+    try:
+        result = send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        return result > 0
+
+    except (SMTPAuthenticationError, SMTPException, OSError, SocketTimeout, BadHeaderError) as error:
+        logger.exception("Ошибка отправки кода подтверждения: %s", error)
+        return False
 
 
 def send_verification_sms_stub(phone: str, code: str) -> None:
