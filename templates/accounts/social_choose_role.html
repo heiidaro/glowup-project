@@ -1,0 +1,60 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Завершение регистрации — Glow Up</title>
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+  <main class="auth">
+    <section class="auth-card">
+      <h1 class="auth-title">Завершение регистрации</h1>
+      <p class="auth-subtitle">
+        Вы вошли через Яндекс. Осталось выбрать тип аккаунта.
+      </p>
+
+      <form method="post" class="auth-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="auth-error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        {% if not email_from_provider %}
+          <label class="auth-field">
+            <span>Email</span>
+            {{ form.email }}
+            {% if form.email.errors %}
+              <small class="auth-field-error">{{ form.email.errors }}</small>
+            {% endif %}
+          </label>
+        {% else %}
+          <div class="auth-info-box">
+            Email: <b>{{ email_from_provider }}</b>
+          </div>
+        {% endif %}
+
+        <div class="auth-field">
+          <span>Кем вы хотите стать?</span>
+          <div class="auth-radio">
+            {{ form.role }}
+          </div>
+          {% if form.role.errors %}
+            <small class="auth-field-error">{{ form.role.errors }}</small>
+          {% endif %}
+        </div>
+
+        <button class="auth-btn" type="submit">
+          Завершить регистрацию
+        </button>
+      </form>
+
+      <div class="auth-back">
+        <a class="auth-link" href="{% url 'login' %}">← Ко входу</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

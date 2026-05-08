@@ -252,3 +252,56 @@ class SetNewPasswordForm(forms.Form):
             self.add_error("password2", "Пароли не совпадают")
 
         return cleaned
+
+
+class SocialRoleForm(forms.Form):
+    role = forms.ChoiceField(
+        label="Кем вы хотите стать?",
+        choices=[
+            (User.ROLE_CLIENT, "Клиент"),
+            (User.ROLE_MASTER, "Мастер"),
+        ],
+        widget=forms.RadioSelect
+    )
+
+    email = forms.EmailField(
+        label="Email",
+        required=False,
+        widget=forms.EmailInput(attrs={
+            "placeholder": "Введите email",
+            "autocomplete": "email",
+        })
+    )
+
+    def __init__(self, *args, require_email=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.require_email = require_email
+
+        if require_email:
+            self.fields["email"].required = True
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+
+        if role not in [User.ROLE_CLIENT, User.ROLE_MASTER]:
+            raise ValidationError("Выберите роль: клиент или мастер")
+
+        return role
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+
+        if self.require_email and not email:
+            raise ValidationError("Введите email для завершения регистрации")
+
+        if email:
+            try:
+                validate_email(email)
+            except ValidationError:
+                raise ValidationError("Введите корректный email")
+
+            if User.objects.filter(email=email).exists():
+                raise ValidationError(
+                    "Пользователь с таким email уже существует")
+
+        return email

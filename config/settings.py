@@ -176,3 +176,6 @@ CSRF_COOKIE_HTTPONLY = False  # Разрешить JavaScript доступ к CS
 CSRF_COOKIE_SAMESITE = 'Lax'  # Или 'Strict' для большей безопасности
 CSRF_USE_SESSIONS = False  # Хранить CSRF в куках, а не в сессии
 CSRF_COOKIE_NAME = 'csrftoken'  # Стандартное имя
+
+YANDEX_OAUTH_CLIENT_ID = "3af5af5c4ab5401a9bef5009d267dff6"
+YANDEX_OAUTH_CLIENT_SECRET = "e3dd3780d2174a838a88f351e736603b"

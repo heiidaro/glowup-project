@@ -17,6 +17,17 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from datetime import timedelta
 
+import secrets
+import requests
+from urllib.parse import urlencode
+
+from django.conf import settings
+from django.urls import reverse
+from django.views.decorators.http import require_http_methods
+
+from .models import SocialAccount
+from .forms import SocialRoleForm
+
 
 def register_view(request):
     if request.method == "POST":
@@ -110,6 +121,29 @@ def logout_view(request):
     """Выход из системы"""
     logout(request)
     return redirect('login')
+
+
+def redirect_user_by_role(user):
+    if user.role == User.ROLE_CLIENT:
+        return redirect("client_dashboard")
+
+    if user.role == User.ROLE_MASTER:
+        return redirect("master_dashboard")
+
+    if user.role == User.ROLE_ADMIN:
+        return redirect("admin_dashboard")
+
+    return redirect("home")
+
+
+def social_login_allowed(user):
+    if not user.is_active:
+        return False
+
+    if getattr(user, "is_deleted", False):
+        return False
+
+    return True
 
 
 def verify_view(request):
@@ -248,3 +282,218 @@ def password_reset_confirm_view(request, token):
         form = SetNewPasswordForm()
 
     return render(request, "accounts/password_reset_confirm.html", {"form": form})
+
+
+def yandex_redirect_uri(request):
+    return request.build_absolute_uri("/accounts/oauth/yandex/callback/")
+
+
+def social_login_start(request, provider):
+    provider = provider.lower()
+
+    if provider != "yandex":
+        messages.error(request, "Этот способ входа пока не подключён")
+        return redirect("login")
+
+    state = secrets.token_urlsafe(32)
+    request.session["oauth_state_yandex"] = state
+
+    params = {
+        "response_type": "code",
+        "client_id": settings.YANDEX_OAUTH_CLIENT_ID,
+        "redirect_uri": yandex_redirect_uri(request),
+        "state": state,
+    }
+
+    url = "https://oauth.yandex.com/authorize?" + urlencode(params)
+    return redirect(url)
+
+
+def social_login_callback(request, provider):
+    provider = provider.lower()
+
+    if provider != "yandex":
+        messages.error(request, "Этот способ входа пока не подключён")
+        return redirect("login")
+
+    error = request.GET.get("error")
+    if error:
+        messages.error(request, "Авторизация через Яндекс была отменена")
+        return redirect("login")
+
+    code = request.GET.get("code")
+    state = request.GET.get("state")
+
+    saved_state = request.session.pop("oauth_state_yandex", None)
+
+    if not code or not state or state != saved_state:
+        messages.error(
+            request, "Ошибка проверки авторизации. Попробуйте ещё раз.")
+        return redirect("login")
+
+    try:
+        token_response = requests.post(
+            "https://oauth.yandex.com/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "client_id": settings.YANDEX_OAUTH_CLIENT_ID,
+                "client_secret": settings.YANDEX_OAUTH_CLIENT_SECRET,
+                "redirect_uri": yandex_redirect_uri(request),
+            },
+            timeout=10,
+        )
+
+        token_response.raise_for_status()
+        token_data = token_response.json()
+
+        access_token = token_data.get("access_token")
+
+        if not access_token:
+            messages.error(request, "Яндекс не вернул токен авторизации")
+            return redirect("login")
+
+        info_response = requests.get(
+            "https://login.yandex.ru/info",
+            params={"format": "json"},
+            headers={
+                "Authorization": f"OAuth {access_token}"
+            },
+            timeout=10,
+        )
+
+        info_response.raise_for_status()
+        profile = info_response.json()
+
+    except requests.RequestException:
+        messages.error(
+            request, "Не удалось получить данные от Яндекса. Попробуйте позже.")
+        return redirect("login")
+
+    provider_user_id = str(profile.get("id") or "")
+    email = (
+        profile.get("default_email")
+        or profile.get("email")
+        or ""
+    ).strip().lower()
+
+    if not provider_user_id:
+        messages.error(request, "Яндекс не вернул идентификатор пользователя")
+        return redirect("login")
+
+    social_account = SocialAccount.objects.select_related("user").filter(
+        provider=SocialAccount.PROVIDER_YANDEX,
+        provider_user_id=provider_user_id
+    ).first()
+
+    if social_account:
+        user = social_account.user
+
+        if not social_login_allowed(user):
+            messages.error(
+                request, "Ваш аккаунт заблокирован или деактивирован")
+            return redirect("login")
+
+        login(request, user)
+        return redirect_user_by_role(user)
+
+    if email:
+        user = User.objects.filter(email=email).first()
+
+        if user:
+            if not social_login_allowed(user):
+                messages.error(
+                    request, "Ваш аккаунт заблокирован или деактивирован")
+                return redirect("login")
+
+            SocialAccount.objects.create(
+                user=user,
+                provider=SocialAccount.PROVIDER_YANDEX,
+                provider_user_id=provider_user_id,
+                email=email
+            )
+
+            if not user.is_verified:
+                user.is_verified = True
+                user.verified_channel = "email"
+                user.save(update_fields=["is_verified", "verified_channel"])
+
+            login(request, user)
+            return redirect_user_by_role(user)
+
+    request.session["pending_social_auth"] = {
+        "provider": SocialAccount.PROVIDER_YANDEX,
+        "provider_user_id": provider_user_id,
+        "email": email,
+    }
+
+    return redirect("social_choose_role")
+
+
+@require_http_methods(["GET", "POST"])
+def social_choose_role_view(request):
+    pending = request.session.get("pending_social_auth")
+
+    if not pending:
+        return redirect("login")
+
+    email_from_provider = (pending.get("email") or "").strip().lower()
+    require_email = not bool(email_from_provider)
+
+    if request.method == "POST":
+        form = SocialRoleForm(request.POST, require_email=require_email)
+
+        if form.is_valid():
+            role = form.cleaned_data["role"]
+            email = email_from_provider or form.cleaned_data["email"]
+
+            if not email:
+                form.add_error(
+                    "email", "Введите email для завершения регистрации")
+                return render(request, "accounts/social_choose_role.html", {
+                    "form": form,
+                    "provider": pending.get("provider"),
+                    "email_from_provider": email_from_provider,
+                })
+
+            if User.objects.filter(email=email).exists():
+                form.add_error(
+                    "email", "Пользователь с таким email уже существует")
+                return render(request, "accounts/social_choose_role.html", {
+                    "form": form,
+                    "provider": pending.get("provider"),
+                    "email_from_provider": email_from_provider,
+                })
+
+            user = User(
+                email=email,
+                role=role,
+                is_active=True,
+                is_verified=True,
+                verified_channel="email",
+            )
+            user.set_unusable_password()
+            user.save()
+
+            SocialAccount.objects.create(
+                user=user,
+                provider=pending["provider"],
+                provider_user_id=pending["provider_user_id"],
+                email=email
+            )
+
+            request.session.pop("pending_social_auth", None)
+
+            login(request, user)
+            return redirect_user_by_role(user)
+    else:
+        form = SocialRoleForm(
+            initial={"email": email_from_provider},
+            require_email=require_email
+        )
+
+    return render(request, "accounts/social_choose_role.html", {
+        "form": form,
+        "provider": pending.get("provider"),
+        "email_from_provider": email_from_provider,
+    })

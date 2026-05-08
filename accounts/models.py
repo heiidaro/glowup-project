@@ -162,3 +162,36 @@ class PasswordResetToken(models.Model):
 
     def is_expired(self):
         return timezone.now() >= self.expires_at
+
+
+class SocialAccount(models.Model):
+    PROVIDER_YANDEX = "yandex"
+    PROVIDER_VK = "vk"
+
+    PROVIDER_CHOICES = [
+        (PROVIDER_YANDEX, "Яндекс"),
+        (PROVIDER_VK, "VK"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="social_accounts"
+    )
+
+    provider = models.CharField(
+        max_length=30,
+        choices=PROVIDER_CHOICES
+    )
+
+    provider_user_id = models.CharField(max_length=255)
+    email = models.EmailField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "accounts_social_accounts"
+        unique_together = ("provider", "provider_user_id")
+
+    def __str__(self):
+        return f"{self.provider}: {self.email or self.provider_user_id}"

@@ -5,6 +5,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Вход — Glow Up</title>
+  <link rel="icon" type="image/png" href="{% static 'images/logo-icon.png' %}">
+  <link rel="shortcut icon" type="image/png" href="{% static 'images/logo-icon.png' %}">
   <link rel="stylesheet" href="{% static 'css/auth.css' %}">
 </head>
 <body>
@@ -36,6 +38,18 @@
 
         <button class="auth-btn" type="submit">Войти</button>
       </form>
+
+      <div class="auth-social">
+        <div class="auth-social-divider">
+            <span>или</span>
+        </div>
+
+        <a class="social-auth-btn social-auth-btn--yandex"
+          href="{% url 'social_login_start' 'yandex' %}">
+            <img src="{% static 'icons/yandex-id.svg' %}" alt="Яндекс" class="social-auth-img">
+            <span>Войти через Яндекс</span>
+        </a>
+    </div>
 
       <div class="auth-footer">
         <a class="auth-link" href="{% url 'password_reset' %}">Забыли пароль? Восстановить</a>

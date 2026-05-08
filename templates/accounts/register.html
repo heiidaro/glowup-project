@@ -51,6 +51,19 @@
         <button class="auth-btn" type="submit">Создать аккаунт</button>
       </form>
 
+        <div class="auth-social">
+          <div class="auth-social-divider">
+              <span>или</span>
+          </div>
+
+              <a class="social-auth-btn social-auth-btn--yandex"
+                href="{% url 'social_login_start' 'yandex' %}">
+                  <img src="{% static 'icons/yandex-id.svg' %}" alt="Яндекс" class="social-auth-img">
+                  <span>Зарегистрироваться через Яндекс</span>
+              </a>
+          </div>
+        </div>      
+
       <div class="auth-footer">
         <span>Уже есть аккаунт?</span>
         <a class="auth-link" href="{% url 'login' %}">Войти</a>

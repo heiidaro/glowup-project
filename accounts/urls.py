@@ -15,4 +15,10 @@ urlpatterns = [
     path("password-reset/", password_reset_request_view, name="password_reset"),
     path("password-reset/confirm/<uuid:token>/",
          password_reset_confirm_view, name="password_reset_confirm"),
+    path("oauth/<str:provider>/start/",
+         views.social_login_start, name="social_login_start"),
+    path("oauth/<str:provider>/callback/",
+         views.social_login_callback, name="social_login_callback"),
+    path("oauth/choose-role/", views.social_choose_role_view,
+         name="social_choose_role"),
 ]
