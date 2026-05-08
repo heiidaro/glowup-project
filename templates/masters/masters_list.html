@@ -12,6 +12,87 @@
         </div>
     </div>
 
+        <form method="GET" class="masters-filters">
+        <div class="filters-main-row">
+            <div class="filter-field filter-field-wide">
+                <label>Поиск мастера</label>
+                <input type="text"
+                       name="q"
+                       value="{{ filters.q }}"
+                       placeholder="Имя мастера, студия, адрес">
+            </div>
+
+            <div class="filter-field filter-field-wide">
+                <label>Поиск по услугам</label>
+                <input type="text"
+                       name="service_q"
+                       value="{{ filters.service_q }}"
+                       placeholder="Маникюр, массаж, окрашивание">
+            </div>
+
+            <div class="filter-field">
+                <label>Категория</label>
+                <select name="category_id">
+                    <option value="">Все категории</option>
+
+                    {% for category in service_categories %}
+                        <option value="{{ category.id }}"
+                                {% if filters.category_id|stringformat:"s" == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label>Средний чек</label>
+                <select name="price_segment">
+                    <option value="">Любой</option>
+                    <option value="low" {% if filters.price_segment == 'low' %}selected{% endif %}>до 1 500 ₽</option>
+                    <option value="middle" {% if filters.price_segment == 'middle' %}selected{% endif %}>1 500–3 000 ₽</option>
+                    <option value="high" {% if filters.price_segment == 'high' %}selected{% endif %}>3 000–5 000 ₽</option>
+                    <option value="premium" {% if filters.price_segment == 'premium' %}selected{% endif %}>от 5 000 ₽</option>
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label>Рейтинг</label>
+                <select name="rating_min">
+                    <option value="">Любой</option>
+                    <option value="3" {% if filters.rating_min == '3' %}selected{% endif %}>от 3.0</option>
+                    <option value="4" {% if filters.rating_min == '4' %}selected{% endif %}>от 4.0</option>
+                    <option value="4.5" {% if filters.rating_min == '4.5' %}selected{% endif %}>от 4.5</option>
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label>Сортировка</label>
+                <select name="sort">
+                    <option value="">По умолчанию</option>
+                    <option value="rating_desc" {% if filters.sort == 'rating_desc' %}selected{% endif %}>Сначала высокий рейтинг</option>
+                    <option value="reviews_desc" {% if filters.sort == 'reviews_desc' %}selected{% endif %}>Больше отзывов</option>
+                    <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>Сначала дешевле</option>
+                    <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>Сначала дороже</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="filters-actions">
+            <button type="submit" class="filters-submit">
+                <i class="fas fa-search"></i>
+                Найти
+            </button>
+
+            <a href="{% url 'masters_list' %}" class="filters-reset">
+                Сбросить
+            </a>
+
+            <span class="filters-count">
+                Найдено мастеров: {{ masters|length }}
+            </span>
+        </div>
+    </form>
+
     <div class="masters-layout">
         <section class="map-wrapper">
             <div class="map-card">
@@ -37,7 +118,11 @@
                         <div class="master-main">
                             <div class="master-avatar-wrap">
                                 {% if master.avatar %}
-                                    <img class="master-avatar" src="{{ master.avatar.url }}" alt="{{ master.display_name }}">
+                                    <img class="master-avatar"
+                                      src="{{ master.avatar.url }}"
+                                      alt="{{ master.display_name }}"
+                                      loading="lazy"
+                                      decoding="async">
                                 {% else %}
                                     <div class="master-avatar avatar-placeholder">
                                         {{ master.display_name|first|default:"М" }}
@@ -76,7 +161,10 @@
                         <div class="master-portfolio-track">
                             {% for item in master.portfolio %}
                             <div class="master-portfolio-slide {% if forloop.first %}active{% endif %}">
-                                <img src="{{ item.image.url }}" alt="{{ master.display_name }}">
+                                <img src="{{ item.image.url }}"
+                                  alt="{{ master.display_name }}"
+                                  loading="lazy"
+                                  decoding="async">
                                 {% if item.description %}
                                 <div class="master-portfolio-caption">
                                     {{ item.description|truncatechars:70 }}
@@ -167,7 +255,9 @@
 
 {{ masters_map_data|json_script:"masters-map-data" }}
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU" type="text/javascript"></script>
+<script>
+    window.YANDEX_MAPS_API_KEY = "{{ yandex_maps_api_key }}";
+</script>
 
 <style>
 :root {
@@ -205,6 +295,107 @@
     color: var(--ui-muted);
     font-size: 15px;
     line-height: 1.5;
+}
+
+.masters-filters {
+    background: var(--ui-card);
+    border: 1px solid var(--ui-border);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+
+.filters-main-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr repeat(4, minmax(150px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+}
+
+.filter-field label {
+    color: var(--ui-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.filter-field input,
+.filter-field select {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid var(--ui-border);
+    border-radius: 13px;
+    background: #FFFFFF;
+    color: var(--ui-text);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+    outline: none;
+    border-color: var(--ui-dark);
+    box-shadow: 0 0 0 3px rgba(32, 32, 32, .08);
+}
+
+.filters-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.filters-submit,
+.filters-reset {
+    min-height: 42px;
+    padding: 10px 15px;
+    border-radius: 13px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.filters-submit {
+    background: var(--ui-dark);
+    color: #FFFFFF;
+}
+
+.filters-submit:hover {
+    background: #111111;
+}
+
+.filters-reset {
+    background: var(--ui-soft);
+    color: var(--ui-text);
+}
+
+.filters-reset:hover {
+    background: #E5E7EB;
+}
+
+.filters-count {
+    margin-left: auto;
+    min-height: 34px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: var(--ui-soft);
+    color: var(--ui-muted);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .masters-layout {
@@ -255,7 +446,8 @@
 
 .masters-map {
     width: 100%;
-    height: 760px;
+    height: min(620px, calc(100vh - 160px));
+    min-height: 420px;
     background: var(--ui-soft);
 }
 
@@ -630,6 +822,14 @@
     .masters-map {
         height: 420px;
     }
+
+    .filters-main-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filter-field-wide {
+        grid-column: span 2;
+    }
 }
 
 @media (max-width: 700px) {
@@ -640,6 +840,24 @@
     .portfolio-preview {
         grid-template-columns: repeat(2, 1fr);
     }
+
+        .filters-main-row {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-field-wide {
+        grid-column: auto;
+    }
+
+    .filters-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filters-count {
+        margin-left: 0;
+        text-align: center;
+    }
 }
 </style>
 
@@ -648,38 +866,25 @@ let mastersMapInstance = null;
 let placemarksById = {};
 
 document.addEventListener('DOMContentLoaded', function () {
-    if (typeof ymaps === 'undefined') {
-        console.error('Yandex Maps API не загрузился');
-        showMapEmptyState();
-        return;
-    }
-
-    ymaps.ready(initMastersMap);
+    prepareYandexMap();
 });
 
-function initMastersMap() {
+function getMastersMapData() {
     const raw = document.getElementById('masters-map-data');
-
-    console.log('RAW masters-map-data element:', raw);
-    console.log('RAW textContent:', raw ? raw.textContent : 'NO ELEMENT');
-
     let masters = [];
 
     try {
         masters = raw ? JSON.parse(raw.textContent) : [];
     } catch (e) {
-        console.error('Ошибка парсинга JSON:', e);
+        console.error('Ошибка парсинга данных карты:', e);
         masters = [];
     }
-
-    console.log('PARSED masters:', masters);
-    console.log('IS ARRAY:', Array.isArray(masters));
 
     if (!Array.isArray(masters)) {
-        masters = [];
+        return [];
     }
 
-    const validMasters = masters.filter(master =>
+    return masters.filter(master =>
         master &&
         master.lat !== null &&
         master.lng !== null &&
@@ -688,12 +893,79 @@ function initMastersMap() {
         !isNaN(Number(master.lat)) &&
         !isNaN(Number(master.lng))
     );
+}
 
-    console.log('VALID masters:', validMasters);
+function prepareYandexMap() {
+    const validMasters = getMastersMapData();
 
     if (!validMasters.length) {
-        showMapEmptyState();
+        showMapEmptyState('У найденных мастеров не заполнены координаты для отображения на карте');
         return;
+    }
+
+    loadYandexMaps(function () {
+        initMastersMap(validMasters);
+    });
+}
+
+function loadYandexMaps(callback) {
+    if (window.ymaps) {
+        ymaps.ready(callback);
+        return;
+    }
+
+    const existingScript = document.getElementById('yandexMapsScript');
+
+    if (existingScript) {
+        existingScript.addEventListener('load', function () {
+            if (window.ymaps) {
+                ymaps.ready(callback);
+            }
+        });
+
+        existingScript.addEventListener('error', function () {
+            showMapEmptyState('Не удалось загрузить Яндекс.Карту. Проверьте интернет, VPN или DNS.');
+        });
+
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'yandexMapsScript';
+    script.type = 'text/javascript';
+    script.async = true;
+
+    const apiKey = window.YANDEX_MAPS_API_KEY || '';
+
+    script.src = apiKey
+        ? `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=ru_RU`
+        : 'https://api-maps.yandex.ru/2.1/?lang=ru_RU';
+
+    script.onload = function () {
+        if (window.ymaps) {
+            ymaps.ready(callback);
+        } else {
+            showMapEmptyState('Яндекс.Карта загрузилась некорректно.');
+        }
+    };
+
+    script.onerror = function () {
+        showMapEmptyState('Не удалось загрузить Яндекс.Карту. Проверьте интернет, VPN или DNS.');
+    };
+
+    document.head.appendChild(script);
+}
+
+function initMastersMap(validMasters) {
+    const map = document.getElementById('mastersMap');
+    const empty = document.getElementById('mapEmptyState');
+
+    if (map) {
+        map.style.display = 'block';
+    }
+
+    if (empty) {
+        empty.style.display = 'none';
     }
 
     mastersMapInstance = new ymaps.Map('mastersMap', {
@@ -716,7 +988,8 @@ function initMastersMap() {
                         <div>${master.address || 'Адрес не указан'}</div>
                         ${master.price ? `<div style="margin-top:6px;">от ${master.price} ₽</div>` : ''}
                         <div style="margin-top:8px;">
-                            <a href="/master/profile/${master.id}/" style="color:#2563EB; text-decoration:none; font-weight:600;">
+                            <a href="/master/profile/${master.id}/"
+                               style="color:#2563EB; text-decoration:none; font-weight:600;">
                                 Открыть профиль
                             </a>
                         </div>
@@ -745,6 +1018,10 @@ function initMastersMap() {
             zoomMargin: 40
         });
     }
+
+    setTimeout(function () {
+        mastersMapInstance.container.fitToViewport();
+    }, 200);
 }
 
 function focusMasterOnMap(masterId) {
@@ -766,6 +1043,7 @@ function highlightMasterCard(masterId) {
     });
 
     const card = document.getElementById(`master-card-${masterId}`);
+
     if (card) {
         card.classList.add('active-on-map');
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -776,7 +1054,7 @@ function openProfile(masterId) {
     window.location.href = `/master/profile/${masterId}/`;
 }
 
-function showMapEmptyState() {
+function showMapEmptyState(message) {
     const map = document.getElementById('mastersMap');
     const empty = document.getElementById('mapEmptyState');
 
@@ -786,6 +1064,12 @@ function showMapEmptyState() {
 
     if (empty) {
         empty.style.display = 'block';
+
+        const text = empty.querySelector('p');
+
+        if (text && message) {
+            text.textContent = message;
+        }
     }
 }
 

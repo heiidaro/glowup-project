@@ -319,7 +319,10 @@
         <div class="profile-top">
             <div class="profile-avatar">
                 {% if client.avatar %}
-                    <img src="{{ client.avatar.url }}" alt="{{ client.full_name }}">
+                    <img src="{{ client.avatar.url }}"
+                      alt="{{ client.full_name }}"
+                      loading="lazy"
+                      decoding="async">
                 {% else %}
                     <div class="avatar-large">
                         {% if client and client.full_name %}
@@ -604,6 +607,151 @@ body {
     top: 15px;
     right: 15px;
     color: var(--gray);
+}
+
+/* Исправление правой карточки профиля */
+.profile-card {
+    position: relative;
+    padding: 22px 18px;
+    overflow: hidden;
+}
+
+.profile-card .settings-btn {
+    top: 16px;
+    right: 16px;
+
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    border: 1px solid #E5E7EB;
+
+    background: #FFFFFF;
+    color: #6B7280;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(0,0,0,.05);
+}
+
+.profile-card .settings-btn:hover {
+    background: #202020;
+    color: #FFFFFF;
+    border-color: #202020;
+}
+
+.profile-card .profile-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding-right: 44px;
+}
+
+.profile-card .profile-avatar {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+    flex: 0 0 68px;
+}
+
+.profile-card .profile-avatar img,
+.profile-card .avatar-large {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+
+    border-radius: 50%;
+    background: #202020;
+    color: #FFFFFF;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    object-fit: cover;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.profile-card .profile-meta {
+    flex: 1;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.profile-card .profile-meta h3 {
+    margin: 0;
+    max-width: 100%;
+
+    color: #202020;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.18;
+
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.profile-card .profile-role {
+    display: block;
+    margin-top: 4px;
+
+    color: #202020;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.profile-card .profile-details {
+    width: 100%;
+    margin-top: 14px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-card .profile-line {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.profile-card .profile-line .label {
+    color: #6B7280;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.profile-card .profile-line .value {
+    display: block;
+    max-width: 100%;
+
+    color: #111827;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1280px) {
+    .profile-card .profile-top {
+        flex-direction: column;
+        padding-right: 44px;
+    }
+
+    .profile-card .profile-meta {
+        width: 100%;
+    }
 }
 
 

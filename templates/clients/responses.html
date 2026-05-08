@@ -10,7 +10,10 @@
             <h1>Отклики на мои посты</h1>
             <p>Все отклики мастеров на ваши посты</p>
         </div>
-        <a href="{% url 'create_post' %}" class="top-action-btn">Создать новый пост</a>
+        <a href="{% url 'create_post' %}" class="top-action-btn">
+            <i class="fas fa-plus"></i>
+            <span>Создать новый пост</span>
+        </a>
     </div>
 
     {% if responses %}
@@ -175,6 +178,47 @@
 .top-action-btn,
 .link-btn {
     text-decoration: none;
+}
+
+.top-action-btn {
+    min-height: 46px;
+    padding: 12px 18px;
+
+    border-radius: 14px;
+    border: 1px solid #202020;
+
+    background: #202020;
+    color: #FFFFFF;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+
+    box-shadow: 0 10px 24px rgba(0,0,0,.12);
+    transition: .2s ease;
+    white-space: nowrap;
+}
+
+.top-action-btn i {
+    font-size: 13px;
+}
+
+.top-action-btn:hover {
+    background: #111111;
+    border-color: #111111;
+    color: #FFFFFF;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(0,0,0,.16);
+}
+
+.top-action-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba(0,0,0,.12);
 }
 
 .responses-grid {
@@ -441,6 +485,10 @@
     .responses-page-header {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .top-action-btn {
+        width: 100%;
     }
 }
 </style>

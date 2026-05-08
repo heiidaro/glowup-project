@@ -16,9 +16,10 @@ from .models import MasterProfile
 import requests
 from django.conf import settings
 from .models import MasterProfile, Portfolio, Service, ServiceCategory, MasterScheduleSlot
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from collections import defaultdict
 
 
 def geocode_yandex_address(address: str):
@@ -66,78 +67,197 @@ def geocode_yandex_address(address: str):
         return None, None
 
 
-@login_required
 def masters_list(request):
-    """Список всех мастеров"""
+    """Список всех мастеров с фильтрацией и оптимизированной загрузкой"""
 
-    masters = MasterProfile.objects.filter(
+    q = request.GET.get('q', '').strip()
+    service_q = request.GET.get('service_q', '').strip()
+    category_id = request.GET.get('category_id', '').strip()
+    price_segment = request.GET.get('price_segment', '').strip()
+    rating_min = request.GET.get('rating_min', '').strip()
+    sort = request.GET.get('sort', '').strip()
+
+    masters_qs = MasterProfile.objects.filter(
         is_approved=True,
         user__is_active=True
     ).select_related('user')
+
+    if q:
+        masters_qs = masters_qs.filter(
+            Q(display_name__icontains=q) |
+            Q(address_text__icontains=q) |
+            Q(bio__icontains=q) |
+            Q(user__email__icontains=q) |
+            Q(user__phone__icontains=q)
+        )
+
+    if service_q:
+        service_master_ids = Service.objects.filter(
+            is_active=True,
+            name__icontains=service_q
+        ).values_list('master_id', flat=True)
+
+        masters_qs = masters_qs.filter(id__in=service_master_ids)
+
+    if category_id:
+        category_master_ids = Service.objects.filter(
+            is_active=True,
+            category_id=category_id
+        ).values_list('master_id', flat=True)
+
+        masters_qs = masters_qs.filter(id__in=category_master_ids)
+
+    masters = list(masters_qs.distinct())
+
+    master_ids = [master.id for master in masters]
+
+    service_categories = ServiceCategory.objects.all().order_by('name')
+
+    services_by_master = defaultdict(list)
+    services_qs = Service.objects.filter(
+        master_id__in=master_ids,
+        is_active=True
+    ).select_related('category').order_by('name')
+
+    for service in services_qs:
+        services_by_master[service.master_id].append(service)
+
+    portfolio_by_master = defaultdict(list)
+    portfolio_qs = Portfolio.objects.filter(
+        master_id__in=master_ids,
+        is_hidden=False
+    ).order_by('master_id', '-created_at')
+
+    for item in portfolio_qs:
+        if len(portfolio_by_master[item.master_id]) < 3:
+            portfolio_by_master[item.master_id].append(item)
+
+    prices_by_master = {
+        item['master_id']: item['avg_price'] or 0
+        for item in Service.objects.filter(
+            master_id__in=master_ids,
+            is_active=True
+        ).values('master_id').annotate(
+            avg_price=Avg('price')
+        )
+    }
+
+    reviews_by_master = {
+        item['master_id']: {
+            'rating': item['rating'] or 0,
+            'reviews_count': item['reviews_count'] or 0,
+        }
+        for item in Review.objects.filter(
+            master_id__in=master_ids,
+            is_approved=True,
+            is_blocked=False
+        ).values('master_id').annotate(
+            rating=Avg('rating'),
+            reviews_count=Count('id')
+        )
+    }
 
     masters_data = []
     masters_map_data = []
 
     for master in masters:
-        portfolio = list(
-            Portfolio.objects.filter(
-                master=master,
-                is_hidden=False
-            ).order_by('-created_at')[:3]
-        )
+        avg_price = prices_by_master.get(master.id, 0)
+        review_data = reviews_by_master.get(master.id, {
+            'rating': 0,
+            'reviews_count': 0,
+        })
 
-        try:
-            services = master.services.filter(is_active=True)[:3]
-        except Exception:
-            services = []
+        rating = review_data['rating']
+        reviews_count = review_data['reviews_count']
 
-        try:
-            avg_price = master.services.filter(is_active=True).aggregate(
-                Avg('price')
-            )['price__avg'] or 0
-        except Exception:
-            avg_price = 0
+        if rating_min:
+            try:
+                if float(rating or 0) < float(rating_min):
+                    continue
+            except ValueError:
+                pass
 
-        try:
-            reviews = Review.objects.filter(
-                master=master,
-                is_approved=True,
-                is_blocked=False
-            )
-            rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
-            reviews_count = reviews.count()
-        except Exception:
-            rating = 0
-            reviews_count = 0
+        if price_segment:
+            price = float(avg_price or 0)
 
-        masters_data.append({
+            if price_segment == 'low' and not (price > 0 and price <= 1500):
+                continue
+
+            if price_segment == 'middle' and not (1500 < price <= 3000):
+                continue
+
+            if price_segment == 'high' and not (3000 < price <= 5000):
+                continue
+
+            if price_segment == 'premium' and not (price > 5000):
+                continue
+
+        master_item = {
             'id': master.id,
             'display_name': master.display_name or "Мастер",
             'address': master.address_text or "Адрес не указан",
             'avatar': master.avatar,
             'bio': master.bio,
-            'portfolio': portfolio,
-            'services': services,
+            'portfolio': portfolio_by_master.get(master.id, []),
+            'services': services_by_master.get(master.id, [])[:3],
             'avg_price': avg_price,
             'rating': rating,
             'reviews_count': reviews_count,
             'user': master.user,
-        })
+        }
+
+        masters_data.append(master_item)
 
         if master.latitude is not None and master.longitude is not None:
-            masters_map_data.append({
-                'id': master.id,
-                'name': master.display_name or "Мастер",
-                'address': master.address_text or "Адрес не указан",
-                'lat': float(master.latitude),
-                'lng': float(master.longitude),
-                'price': round(avg_price) if avg_price else None,
-            })
+            try:
+                lat = float(master.latitude)
+                lng = float(master.longitude)
+
+                masters_map_data.append({
+                    'id': master.id,
+                    'name': master.display_name or "Мастер",
+                    'address': master.address_text or "Адрес не указан",
+                    'lat': lat,
+                    'lng': lng,
+                    'price': round(float(avg_price)) if avg_price else None,
+                })
+            except (TypeError, ValueError):
+                pass
+
+    if sort == 'rating_desc':
+        masters_data.sort(key=lambda item: item['rating'] or 0, reverse=True)
+
+    elif sort == 'price_asc':
+        masters_data.sort(key=lambda item: float(item['avg_price'] or 0))
+
+    elif sort == 'price_desc':
+        masters_data.sort(key=lambda item: float(
+            item['avg_price'] or 0), reverse=True)
+
+    elif sort == 'reviews_desc':
+        masters_data.sort(
+            key=lambda item: item['reviews_count'] or 0, reverse=True)
+
+    masters_data = masters_data[:30]
+    visible_master_ids = {item['id'] for item in masters_data}
+    masters_map_data = [
+        item for item in masters_map_data
+        if item['id'] in visible_master_ids
+    ]
 
     context = {
         'masters': masters_data,
         'masters_map_data': masters_map_data,
+        'service_categories': service_categories,
         'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
+        'filters': {
+            'q': q,
+            'service_q': service_q,
+            'category_id': category_id,
+            'price_segment': price_segment,
+            'rating_min': rating_min,
+            'sort': sort,
+        },
     }
 
     return render(request, 'masters/masters_list.html', context)
@@ -382,6 +502,12 @@ def master_dashboard(request):
     portfolio_items = Portfolio.objects.filter(
         master=master_profile,
         is_hidden=False
+    ).only(
+        'id',
+        'image',
+        'description',
+        'master_id',
+        'created_at'
     ).order_by('-created_at')[:3]
 
     master_services = Service.objects.filter(
@@ -1038,6 +1164,7 @@ def master_public_profile(request, master_id):
         'reviews_count': reviews_count,
         'avg_price': avg_price,
         'categories': categories,
+        'yandex_maps_api_key': settings.YANDEX_MAPS_API_KEY,
     }
 
     return render(request, 'masters/public_profile.html', context)

@@ -38,7 +38,7 @@
                     <div class="response-client">
                         <div class="client-avatar small">
                             {% if response.post.client.avatar %}
-                                <img src="{{ response.post.client.avatar.url }}" alt="">
+                                <img src="{{ response.post.client.avatar.url }}" alt="" loading="lazy" decoding="async">
                             {% else %}
                                 <div class="avatar-placeholder">
                                     {{ response.post.client.full_name|first|default:"К" }}
@@ -121,7 +121,7 @@
                     <div class="booking-client">
                         <div class="client-avatar small">
                             {% if booking.client.avatar %}
-                                <img src="{{ booking.client.avatar.url }}" alt="">
+                                <img src="{{ booking.client.avatar.url }}" alt="" loading="lazy" decoding="async">
                             {% else %}
                                 <div class="avatar-placeholder">
                                     {{ booking.client.full_name|first|default:"К" }}
@@ -163,7 +163,10 @@
                 <div class="dashboard-portfolio-track">
                     {% for item in portfolio_items %}
                     <div class="dashboard-portfolio-slide {% if forloop.first %}active{% endif %}">
-                        <img src="{{ item.image.url }}" alt="Фото портфолио">
+                        <img src="{{ item.image.url }}"
+                          alt="Фото портфолио"
+                          loading="lazy"
+                          decoding="async">
 
                         {% if item.description %}
                         <div class="dashboard-portfolio-caption">
@@ -215,7 +218,7 @@
                     <div class="review-header">
                         <div class="reviewer-avatar">
                             {% if review.client.avatar %}
-                                <img src="{{ review.client.avatar.url }}" alt="">
+                                <img src="{{ review.client.avatar.url }}" alt="" loading="lazy" decoding="async">
                             {% else %}
                                 <div class="avatar-placeholder">
                                     {{ review.client.full_name|first|default:"К" }}
@@ -241,9 +244,11 @@
                     </div>
                 </div>
                 {% endfor %}
-                {% if reviews|length > 3 %}
+                {% if reviews_total_count > 3 %}
                 <div class="reviews-more">
-                    <a href="#" onclick="openReviewsModal(); return false;">Показать все отзывы ({{ reviews|length }})</a>
+                    <a href="#" onclick="openReviewsModal(); return false;">
+                        Показать все отзывы ({{ reviews_total_count }})
+                    </a>
                 </div>
                 {% endif %}
             {% else %}
@@ -544,7 +549,10 @@
         <div class="profile-top">
             <div class="profile-avatar">
                 {% if master.avatar %}
-                    <img src="{{ master.avatar.url }}" alt="{{ master.display_name }}">
+                    <img src="{{ master.avatar.url }}"
+                      alt="{{ master.display_name }}"
+                      loading="lazy"
+                      decoding="async">
                 {% else %}
                     <div class="avatar-large">
                         {% if master and master.display_name %}
@@ -772,7 +780,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU" type="text/javascript"></script>
+<script>
+    window.YANDEX_MAPS_API_KEY = "{{ yandex_maps_api_key|default:'' }}";
+</script>
 <style>
   :root {
       --bg: #F7F7F5;
@@ -834,6 +844,151 @@
     top: 15px;
     right: 15px;
     color: var(--gray);
+}
+
+/* Исправление правой карточки профиля */
+.profile-card {
+    position: relative;
+    padding: 22px 18px;
+    overflow: hidden;
+}
+
+.profile-card .settings-btn {
+    top: 16px;
+    right: 16px;
+
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    border: 1px solid #E5E7EB;
+
+    background: #FFFFFF;
+    color: #6B7280;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(0,0,0,.05);
+}
+
+.profile-card .settings-btn:hover {
+    background: #202020;
+    color: #FFFFFF;
+    border-color: #202020;
+}
+
+.profile-card .profile-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding-right: 44px;
+}
+
+.profile-card .profile-avatar {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+    flex: 0 0 68px;
+}
+
+.profile-card .profile-avatar img,
+.profile-card .avatar-large {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+
+    border-radius: 50%;
+    background: #202020;
+    color: #FFFFFF;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    object-fit: cover;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.profile-card .profile-meta {
+    flex: 1;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.profile-card .profile-meta h3 {
+    margin: 0;
+    max-width: 100%;
+
+    color: #202020;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.18;
+
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.profile-card .profile-role {
+    display: block;
+    margin-top: 4px;
+
+    color: #202020;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.profile-card .profile-details {
+    width: 100%;
+    margin-top: 14px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-card .profile-line {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.profile-card .profile-line .label {
+    color: #6B7280;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.profile-card .profile-line .value {
+    display: block;
+    max-width: 100%;
+
+    color: #111827;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1280px) {
+    .profile-card .profile-top {
+        flex-direction: column;
+        padding-right: 44px;
+    }
+
+    .profile-card .profile-meta {
+        width: 100%;
+    }
 }
 
 .master-item, .client-item {
@@ -2127,6 +2282,15 @@ button.icon-btn:hover {
 function openSettingsModal() {
     document.getElementById('settingsModal').style.display = 'flex';
     document.body.classList.add('modal-open');
+
+    loadYandexMapsForDashboard(function () {
+        setupAddressAutocomplete(
+            'settings_address_text',
+            'settings_address_suggestions',
+            'settings_latitude',
+            'settings_longitude'
+        );
+    });
 }
 
 function closeSettingsModal() {
@@ -2235,7 +2399,66 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
 {% endif %}
 
 
+let dashboardYandexMapsLoading = false;
+let dashboardYandexMapsLoaded = false;
+let dashboardYandexMapsCallbacks = [];
 
+function loadYandexMapsForDashboard(callback) {
+    if (window.ymaps) {
+        dashboardYandexMapsLoaded = true;
+        ymaps.ready(callback);
+        return;
+    }
+
+    dashboardYandexMapsCallbacks.push(callback);
+
+    if (dashboardYandexMapsLoading) {
+        return;
+    }
+
+    dashboardYandexMapsLoading = true;
+
+    const existingScript = document.getElementById('dashboardYandexMapsScript');
+
+    if (existingScript) {
+        existingScript.addEventListener('load', runDashboardYandexCallbacks);
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'dashboardYandexMapsScript';
+    script.type = 'text/javascript';
+    script.async = true;
+
+    const apiKey = window.YANDEX_MAPS_API_KEY || '';
+
+    script.src = apiKey
+        ? `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=ru_RU`
+        : 'https://api-maps.yandex.ru/2.1/?lang=ru_RU';
+
+    script.onload = runDashboardYandexCallbacks;
+
+    script.onerror = function () {
+        dashboardYandexMapsLoading = false;
+        console.error('Не удалось загрузить Яндекс.Карты для подсказок адреса');
+    };
+
+    document.head.appendChild(script);
+}
+
+function runDashboardYandexCallbacks() {
+    if (!window.ymaps) {
+        return;
+    }
+
+    dashboardYandexMapsLoaded = true;
+    dashboardYandexMapsLoading = false;
+
+    ymaps.ready(function () {
+        dashboardYandexMapsCallbacks.forEach(callback => callback());
+        dashboardYandexMapsCallbacks = [];
+    });
+}
 
 
 // ---- Адресные подсказки для Тюмени ----
@@ -2382,26 +2605,18 @@ function setupAddressAutocomplete(inputId, suggestionsId, latId, lngId) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    if (typeof ymaps === 'undefined') {
-        console.error('Yandex Maps API не загрузился для адресных подсказок');
-        return;
+    const profileModal = document.getElementById('profileModal');
+
+    if (profileModal) {
+        loadYandexMapsForDashboard(function () {
+            setupAddressAutocomplete(
+                'address_text',
+                'profile_address_suggestions',
+                'profile_latitude',
+                'profile_longitude'
+            );
+        });
     }
-
-    ymaps.ready(function () {
-        setupAddressAutocomplete(
-            'address_text',
-            'profile_address_suggestions',
-            'profile_latitude',
-            'profile_longitude'
-        );
-
-        setupAddressAutocomplete(
-            'settings_address_text',
-            'settings_address_suggestions',
-            'settings_latitude',
-            'settings_longitude'
-        );
-    });
 });
 
 // Проверка формы профиля
@@ -2482,12 +2697,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const carousel = document.getElementById('dashboardPortfolioCarousel');
     if (!carousel) return;
 
-    setInterval(function () {
-        const slides = document.querySelectorAll('.dashboard-portfolio-slide');
-        if (slides.length > 1) {
-            changeDashboardPortfolioSlide(1);
-        }
-    }, 5000);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setInterval(function () {
+          const slides = document.querySelectorAll('.dashboard-portfolio-slide');
+
+          if (document.hidden) {
+              return;
+          }
+
+          if (slides.length > 1) {
+              changeDashboardPortfolioSlide(1);
+          }
+      }, 7000);
+    }
 });
 
 

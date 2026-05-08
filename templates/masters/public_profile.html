@@ -72,6 +72,36 @@
         </div>
     </section>
 
+    <section class="profile-section master-map-section">
+      <div class="section-title-row">
+          <h2>Адрес на карте</h2>
+
+          {% if master.address_text %}
+              <span>{{ master.address_text }}</span>
+          {% endif %}
+      </div>
+
+      {% if master.latitude and master.longitude %}
+          <div id="masterProfileMap"
+              class="master-profile-map"
+              data-lat="{{ master.latitude|stringformat:'s'|escapejs }}"
+              data-lng="{{ master.longitude|stringformat:'s'|escapejs }}"
+              data-name="{{ master.display_name|default:'Мастер'|escapejs }}"
+              data-address="{{ master.address_text|default:'Адрес не указан'|escapejs }}">
+          </div>
+
+          <div id="masterProfileMapEmpty" class="master-map-empty" style="display:none;">
+              <i class="fas fa-map-marker-alt"></i>
+              <p>Не удалось загрузить Яндекс.Карту. Проверьте интернет или VPN.</p>
+          </div>
+      {% else %}
+          <div class="master-map-empty">
+              <i class="fas fa-map-marker-alt"></i>
+              <p>Мастер пока не указал координаты для отображения на карте</p>
+          </div>
+      {% endif %}
+  </section>
+
     <section class="profile-section" id="services">
         <h2>Услуги</h2>
 
@@ -468,6 +498,64 @@
     font-weight: 500;
 }
 
+.section-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.section-title-row h2 {
+    margin-bottom: 0;
+}
+
+.section-title-row span {
+    max-width: 55%;
+    color: #6B7280;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: right;
+}
+
+.master-map-section {
+    padding-bottom: 18px;
+}
+
+.master-profile-map {
+    width: 100%;
+    height: 260px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+}
+
+.master-map-empty {
+    min-height: 150px;
+    border-radius: 18px;
+    background: #F7F7F5;
+    border: 1px solid #E5E7EB;
+    color: #6B7280;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 20px;
+}
+
+.master-map-empty i {
+    font-size: 28px;
+    color: #202020;
+}
+
+.master-map-empty p {
+    font-size: 14px;
+    line-height: 1.45;
+}
+
 .services-list {
     display: flex;
     flex-direction: column;
@@ -707,6 +795,18 @@
     .review-input-row {
         grid-template-columns: 1fr;
     }
+        .section-title-row {
+        flex-direction: column;
+    }
+
+    .section-title-row span {
+        max-width: 100%;
+        text-align: left;
+    }
+
+    .master-profile-map {
+        height: 220px;
+    }
 }
 .empty-text {
     color: #6B7280;
@@ -920,5 +1020,134 @@ document.addEventListener('click', function(event) {
         });
     }
 });
+</script>
+<script>
+(function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        initMasterProfileYandexMap();
+    });
+
+    function initMasterProfileYandexMap() {
+        const mapElement = document.getElementById('masterProfileMap');
+
+        if (!mapElement) {
+            return;
+        }
+
+        const lat = parseFloat(String(mapElement.dataset.lat || '').replace(',', '.'));
+        const lng = parseFloat(String(mapElement.dataset.lng || '').replace(',', '.'));
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            showMasterMapEmpty('Некорректные координаты мастера');
+            return;
+        }
+
+        loadYandexProfileMap(function () {
+            renderMasterProfileMap(mapElement, lat, lng);
+        });
+    }
+
+    function loadYandexProfileMap(callback) {
+        if (window.ymaps) {
+            ymaps.ready(callback);
+            return;
+        }
+
+        const existingScript = document.getElementById('yandexMapsScript');
+
+        if (existingScript) {
+            existingScript.addEventListener('load', function () {
+                if (window.ymaps) {
+                    ymaps.ready(callback);
+                } else {
+                    showMasterMapEmpty('Яндекс.Карта загрузилась некорректно');
+                }
+            });
+
+            existingScript.addEventListener('error', function () {
+                showMasterMapEmpty('Не удалось загрузить Яндекс.Карту. Проверьте интернет или VPN.');
+            });
+
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'yandexMapsScript';
+        script.type = 'text/javascript';
+        script.async = true;
+
+        const apiKey = "{{ yandex_maps_api_key|default:''|escapejs }}";
+
+        script.src = apiKey
+            ? `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=ru_RU`
+            : 'https://api-maps.yandex.ru/2.1/?lang=ru_RU';
+
+        script.onload = function () {
+            if (window.ymaps) {
+                ymaps.ready(callback);
+            } else {
+                showMasterMapEmpty('Яндекс.Карта загрузилась некорректно');
+            }
+        };
+
+        script.onerror = function () {
+            showMasterMapEmpty('Не удалось загрузить Яндекс.Карту. Проверьте интернет или VPN.');
+        };
+
+        document.head.appendChild(script);
+    }
+
+    function renderMasterProfileMap(mapElement, lat, lng) {
+        const name = mapElement.dataset.name || 'Мастер';
+        const address = mapElement.dataset.address || 'Адрес не указан';
+
+        const map = new ymaps.Map('masterProfileMap', {
+            center: [lat, lng],
+            zoom: 15,
+            controls: ['zoomControl', 'fullscreenControl']
+        });
+
+        const placemark = new ymaps.Placemark(
+            [lat, lng],
+            {
+                balloonContentHeader: name,
+                balloonContentBody: `
+                    <div style="min-width:220px; line-height:1.5;">
+                        <strong>${name}</strong>
+                        <div style="margin-top:6px;">${address}</div>
+                    </div>
+                `
+            },
+            {
+                preset: 'islands#blackCircleDotIcon'
+            }
+        );
+
+        map.geoObjects.add(placemark);
+        placemark.balloon.open();
+
+        setTimeout(function () {
+            map.container.fitToViewport();
+        }, 200);
+    }
+
+    function showMasterMapEmpty(message) {
+        const map = document.getElementById('masterProfileMap');
+        const empty = document.getElementById('masterProfileMapEmpty');
+
+        if (map) {
+            map.style.display = 'none';
+        }
+
+        if (empty) {
+            empty.style.display = 'flex';
+
+            const text = empty.querySelector('p');
+            if (text && message) {
+                text.textContent = message;
+            }
+        }
+    }
+})();
 </script>
 {% endblock %}
