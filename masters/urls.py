@@ -8,6 +8,8 @@ urlpatterns = [
          views.cancel_booking, name='master_cancel_booking'),
     path('reschedule-booking/<int:booking_id>/',
          views.reschedule_booking, name='master_reschedule_booking'),
+    path('booking/<int:booking_id>/available-slots/',
+         views.master_booking_available_slots, name='master_booking_available_slots'),
     path('responses/', views.master_responses, name='master_responses'),
     path('update-response/<int:response_id>/',
          views.update_response, name='update_response'),

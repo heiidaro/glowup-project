@@ -181,8 +181,13 @@
             </div>
             
             <div class="form-group">
-                <label for="new_time">Новое время</label>
-                <input type="time" id="new_time" name="new_time" required>
+                <label for="new_time">Свободное время</label>
+                <select id="new_time" name="new_time" required disabled>
+                    <option value="">Сначала выберите дату</option>
+                </select>
+                <small id="rescheduleSlotsHint" class="slots-hint">
+                    Будут показаны только свободные слоты из вашего расписания.
+                </small>
             </div>
             
             <div class="modal-footer">
@@ -664,6 +669,31 @@
         order: 1;
     }
 }
+
+#new_time {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid #d7d7d0;
+    border-radius: 12px;
+    background: #fff;
+    color: #202020;
+    font-size: 14px;
+}
+
+#new_time:disabled {
+    background: #f4f4f1;
+    color: #8a8a8a;
+    cursor: not-allowed;
+}
+
+.slots-hint {
+    display: block;
+    margin-top: 8px;
+    color: #777;
+    font-size: 12px;
+    line-height: 1.4;
+}
 </style>
 
 <script>
@@ -701,11 +731,23 @@ function showTab(tabName) {
     document.getElementById(tabName + '-tab').classList.add('active');
 }
 
+let currentRescheduleBookingId = null;
+
 function openRescheduleModal(bookingId) {
-    currentBookingId = bookingId;
+    currentRescheduleBookingId = bookingId;
+
     const form = document.getElementById('rescheduleForm');
+    const dateInput = document.getElementById('new_date');
+    const timeSelect = document.getElementById('new_time');
+    const hint = document.getElementById('rescheduleSlotsHint');
+
     form.action = `/master/reschedule-booking/${bookingId}/`;
-    
+
+    dateInput.value = '';
+    timeSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+    timeSelect.disabled = true;
+    hint.textContent = 'Будут показаны только свободные слоты из вашего расписания.';
+
     document.getElementById('rescheduleModal').style.display = 'flex';
     document.body.classList.add('modal-open');
 }
@@ -714,6 +756,56 @@ function closeRescheduleModal() {
     document.getElementById('rescheduleModal').style.display = 'none';
     document.body.classList.remove('modal-open');
     currentBookingId = null;
+}
+
+function loadMasterRescheduleSlots() {
+    const dateInput = document.getElementById('new_date');
+    const timeSelect = document.getElementById('new_time');
+    const hint = document.getElementById('rescheduleSlotsHint');
+
+    const selectedDate = dateInput.value;
+
+    if (!currentRescheduleBookingId || !selectedDate) {
+        timeSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+        timeSelect.disabled = true;
+        return;
+    }
+
+    timeSelect.innerHTML = '<option value="">Загрузка свободных слотов...</option>';
+    timeSelect.disabled = true;
+    hint.textContent = 'Проверяем расписание...';
+
+    fetch(`/master/booking/${currentRescheduleBookingId}/available-slots/?date=${selectedDate}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                timeSelect.innerHTML = '<option value="">Не удалось загрузить слоты</option>';
+                hint.textContent = data.error || 'Ошибка загрузки свободных слотов.';
+                return;
+            }
+
+            if (!data.slots.length) {
+                timeSelect.innerHTML = '<option value="">Нет свободных слотов</option>';
+                hint.textContent = 'На выбранную дату свободного времени нет.';
+                return;
+            }
+
+            timeSelect.innerHTML = '<option value="">Выберите время</option>';
+
+            data.slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = slot.start;
+                option.textContent = slot.label;
+                timeSelect.appendChild(option);
+            });
+
+            timeSelect.disabled = false;
+            hint.textContent = 'Выберите один из доступных слотов.';
+        })
+        .catch(() => {
+            timeSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+            hint.textContent = 'Не удалось получить свободные слоты.';
+        });
 }
 
 function cancelBooking(bookingId) {
@@ -742,6 +834,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeRescheduleModal();
             }
         });
+    }
+
+    const rescheduleDateInput = document.getElementById('new_date');
+
+    if (rescheduleDateInput) {
+        rescheduleDateInput.addEventListener('change', loadMasterRescheduleSlots);
     }
 });
 </script>

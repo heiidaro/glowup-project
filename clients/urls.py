@@ -19,6 +19,8 @@ urlpatterns = [
          views.cancel_booking, name='cancel_booking'),
     path('reschedule-booking/<int:booking_id>/',
          views.reschedule_booking, name='reschedule_booking'),
+    path('booking/<int:booking_id>/available-slots/',
+         views.client_booking_available_slots, name='client_booking_available_slots'),
     path('toggle-response/<int:post_id>/',
          views.toggle_response, name='toggle_response'),
     path('masters/', views.client_masters, name='client_masters'),

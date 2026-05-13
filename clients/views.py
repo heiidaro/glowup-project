@@ -14,7 +14,7 @@ from notifications.models import Notification
 from django.db import transaction
 from django.http import JsonResponse
 import json
-from masters.models import MasterProfile, ServiceCategory
+from masters.models import MasterProfile, ServiceCategory, MasterScheduleSlot
 from django.contrib.auth import update_session_auth_hash
 from calendar import monthrange
 from chats.models import ChatMessage
@@ -125,6 +125,95 @@ def get_month_name(month):
         'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
     ]
     return months[month - 1]
+
+
+def _time_to_minutes(value):
+    return value.hour * 60 + value.minute
+
+
+def _minutes_to_time(value):
+    from datetime import time
+    return time(value // 60, value % 60)
+
+
+def _round_duration_to_slot(duration_minutes):
+    step = 30
+    return ((int(duration_minutes) + step - 1) // step) * step
+
+
+def _booking_duration_minutes(booking):
+    if booking.end_time:
+        start = _time_to_minutes(booking.time)
+        end = _time_to_minutes(booking.end_time)
+
+        if end > start:
+            return end - start
+
+    if booking.service_ref and booking.service_ref.duration_minutes:
+        return booking.service_ref.duration_minutes
+
+    return 60
+
+
+def get_reschedule_available_slots(booking, selected_date):
+    duration = _round_duration_to_slot(_booking_duration_minutes(booking))
+
+    schedule_slots = MasterScheduleSlot.objects.filter(
+        master=booking.master,
+        date=selected_date,
+        is_available=True
+    ).order_by('start_time')
+
+    active_bookings = Booking.objects.filter(
+        master=booking.master,
+        date=selected_date,
+        status='active'
+    ).exclude(id=booking.id)
+
+    busy_ranges = []
+
+    for item in active_bookings:
+        start = _time_to_minutes(item.time)
+
+        if item.end_time:
+            end = _time_to_minutes(item.end_time)
+        else:
+            end = start + 60
+
+        busy_ranges.append((start, end))
+
+    result = []
+
+    for slot in schedule_slots:
+        slot_start = _time_to_minutes(slot.start_time)
+        slot_end = _time_to_minutes(slot.end_time)
+
+        current = slot_start
+
+        while current + duration <= slot_end:
+            candidate_start = current
+            candidate_end = current + duration
+
+            has_conflict = False
+
+            for busy_start, busy_end in busy_ranges:
+                if candidate_start < busy_end and candidate_end > busy_start:
+                    has_conflict = True
+                    break
+
+            if not has_conflict:
+                start_time = _minutes_to_time(candidate_start)
+                end_time = _minutes_to_time(candidate_end)
+
+                result.append({
+                    'start': start_time,
+                    'end': end_time,
+                    'label': f'{start_time.strftime("%H:%M")} – {end_time.strftime("%H:%M")}',
+                })
+
+            current += 30
+
+    return result
 
 
 @login_required
@@ -511,36 +600,95 @@ def cancel_booking(request, booking_id):
 
 
 @login_required
+def client_booking_available_slots(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+
+    if request.user.role != 'client' or booking.client.user != request.user:
+        return JsonResponse({'success': False, 'error': 'Нет доступа'}, status=403)
+
+    selected_date = request.GET.get('date')
+
+    if not selected_date:
+        return JsonResponse({'success': False, 'error': 'Дата не указана'}, status=400)
+
+    try:
+        selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Некорректная дата'}, status=400)
+
+    slots = get_reschedule_available_slots(booking, selected_date_obj)
+
+    return JsonResponse({
+        'success': True,
+        'slots': [
+            {
+                'start': item['start'].strftime('%H:%M'),
+                'end': item['end'].strftime('%H:%M'),
+                'label': item['label'],
+            }
+            for item in slots
+        ]
+    })
+
+
+@login_required
 def reschedule_booking(request, booking_id):
     if request.method == 'POST':
         booking = get_object_or_404(Booking, id=booking_id)
 
-        # Проверяем права
-        if request.user.role == 'client' and booking.client.user != request.user:
+        if request.user.role != 'client' or booking.client.user != request.user:
             messages.error(request, 'У вас нет прав для переноса этой записи')
             return redirect('client_bookings')
-        elif request.user.role == 'master' and booking.master.user != request.user:
-            messages.error(request, 'У вас нет прав для переноса этой записи')
-            return redirect('master_bookings')
 
-        # Проверяем, можно ли перенести
         if not booking.can_reschedule:
             messages.error(
                 request, 'Нельзя перенести запись менее чем за 24 часа')
-            return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+            return redirect('client_bookings')
 
         new_date = request.POST.get('new_date')
         new_time = request.POST.get('new_time')
 
-        if new_date and new_time:
-            booking.date = new_date
-            booking.time = new_time
-            booking.save()
-            messages.success(request, 'Запись успешно перенесена')
-        else:
-            messages.error(request, 'Укажите новую дату и время')
+        if not new_date or not new_time:
+            messages.error(request, 'Выберите новую дату и свободное время')
+            return redirect('client_bookings')
 
-    return redirect('client_bookings' if request.user.role == 'client' else 'master_bookings')
+        try:
+            new_date_obj = datetime.strptime(new_date, '%Y-%m-%d').date()
+            new_time_obj = datetime.strptime(new_time, '%H:%M').time()
+        except ValueError:
+            messages.error(request, 'Некорректная дата или время')
+            return redirect('client_bookings')
+
+        available_slots = get_reschedule_available_slots(booking, new_date_obj)
+
+        selected_slot = None
+
+        for slot in available_slots:
+            if slot['start'] == new_time_obj:
+                selected_slot = slot
+                break
+
+        if not selected_slot:
+            messages.error(
+                request, 'Выбранное время уже занято или недоступно')
+            return redirect('client_bookings')
+
+        booking.date = new_date_obj
+        booking.time = selected_slot['start']
+        booking.end_time = selected_slot['end']
+        booking.save(update_fields=['date', 'time', 'end_time', 'updated_at'])
+
+        Notification.objects.create(
+            user=booking.master.user,
+            notification_type='booking_rescheduled',
+            title='Запись перенесена',
+            message=f'Клиент {booking.client.full_name} перенес запись на {booking.date.strftime("%d.%m.%Y")} в {booking.time.strftime("%H:%M")}',
+            link='/master/bookings/'
+        )
+
+        messages.success(request, 'Запись успешно перенесена')
+
+    return redirect('client_bookings')
 
 
 @login_required

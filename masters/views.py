@@ -388,6 +388,81 @@ def generate_available_slots(master, service, selected_date):
     return result
 
 
+def booking_duration_minutes(booking):
+    if booking.end_time:
+        start = time_to_minutes(booking.time)
+        end = time_to_minutes(booking.end_time)
+
+        if end > start:
+            return end - start
+
+    if booking.service_ref and booking.service_ref.duration_minutes:
+        return booking.service_ref.duration_minutes
+
+    return 60
+
+
+def generate_reschedule_slots(booking, selected_date):
+    duration = round_duration_to_slot(booking_duration_minutes(booking))
+
+    schedule_slots = MasterScheduleSlot.objects.filter(
+        master=booking.master,
+        date=selected_date,
+        is_available=True
+    ).order_by('start_time')
+
+    active_bookings = Booking.objects.filter(
+        master=booking.master,
+        date=selected_date,
+        status='active'
+    ).exclude(id=booking.id)
+
+    busy_ranges = []
+
+    for item in active_bookings:
+        start = time_to_minutes(item.time)
+
+        if item.end_time:
+            end = time_to_minutes(item.end_time)
+        else:
+            end = start + 60
+
+        busy_ranges.append((start, end))
+
+    result = []
+
+    for slot in schedule_slots:
+        slot_start = time_to_minutes(slot.start_time)
+        slot_end = time_to_minutes(slot.end_time)
+
+        current = slot_start
+
+        while current + duration <= slot_end:
+            candidate_start = current
+            candidate_end = current + duration
+
+            has_conflict = False
+
+            for busy_start, busy_end in busy_ranges:
+                if candidate_start < busy_end and candidate_end > busy_start:
+                    has_conflict = True
+                    break
+
+            if not has_conflict:
+                start_time = minutes_to_time(candidate_start)
+                end_time = minutes_to_time(candidate_end)
+
+                result.append({
+                    'start': start_time,
+                    'end': end_time,
+                    'label': f'{start_time.strftime("%H:%M")} – {end_time.strftime("%H:%M")}',
+                })
+
+            current += 30
+
+    return result
+
+
 def get_dashboard_calendar_days(year, month, bookings):
     """Генерирует дни месяца для календаря на главной (только активные)"""
     first_day = date(year, month, 1)
@@ -768,18 +843,47 @@ def cancel_booking(request, booking_id):
 
 
 @login_required
+def master_booking_available_slots(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+
+    if request.user.role != 'master' or booking.master.user != request.user:
+        return JsonResponse({'success': False, 'error': 'Нет доступа'}, status=403)
+
+    selected_date = request.GET.get('date')
+
+    if not selected_date:
+        return JsonResponse({'success': False, 'error': 'Дата не указана'}, status=400)
+
+    try:
+        selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Некорректная дата'}, status=400)
+
+    slots = generate_reschedule_slots(booking, selected_date_obj)
+
+    return JsonResponse({
+        'success': True,
+        'slots': [
+            {
+                'start': item['start'].strftime('%H:%M'),
+                'end': item['end'].strftime('%H:%M'),
+                'label': item['label'],
+            }
+            for item in slots
+        ]
+    })
+
+
+@login_required
 def reschedule_booking(request, booking_id):
-    """Перенос записи мастером"""
     if request.method == 'POST':
         booking = get_object_or_404(Booking, id=booking_id)
 
-        # Проверяем права
-        if booking.master.user != request.user:
+        if request.user.role != 'master' or booking.master.user != request.user:
             messages.error(request, 'У вас нет прав для переноса этой записи')
             return redirect('master_bookings')
 
-        # Проверяем, можно ли перенести
-        if not booking.can_cancel:
+        if not booking.can_reschedule:
             messages.error(
                 request, 'Нельзя перенести запись менее чем за 24 часа')
             return redirect('master_bookings')
@@ -787,13 +891,45 @@ def reschedule_booking(request, booking_id):
         new_date = request.POST.get('new_date')
         new_time = request.POST.get('new_time')
 
-        if new_date and new_time:
-            booking.date = new_date
-            booking.time = new_time
-            booking.save()
-            messages.success(request, 'Запись успешно перенесена')
-        else:
-            messages.error(request, 'Укажите новую дату и время')
+        if not new_date or not new_time:
+            messages.error(request, 'Выберите новую дату и свободное время')
+            return redirect('master_bookings')
+
+        try:
+            new_date_obj = datetime.strptime(new_date, '%Y-%m-%d').date()
+            new_time_obj = datetime.strptime(new_time, '%H:%M').time()
+        except ValueError:
+            messages.error(request, 'Некорректная дата или время')
+            return redirect('master_bookings')
+
+        available_slots = generate_reschedule_slots(booking, new_date_obj)
+
+        selected_slot = None
+
+        for slot in available_slots:
+            if slot['start'] == new_time_obj:
+                selected_slot = slot
+                break
+
+        if not selected_slot:
+            messages.error(
+                request, 'Выбранное время уже занято или недоступно')
+            return redirect('master_bookings')
+
+        booking.date = new_date_obj
+        booking.time = selected_slot['start']
+        booking.end_time = selected_slot['end']
+        booking.save(update_fields=['date', 'time', 'end_time', 'updated_at'])
+
+        Notification.objects.create(
+            user=booking.client.user,
+            notification_type='booking_rescheduled',
+            title='Запись перенесена',
+            message=f'Мастер {booking.master.display_name} перенес запись на {booking.date.strftime("%d.%m.%Y")} в {booking.time.strftime("%H:%M")}',
+            link='/client/bookings/'
+        )
+
+        messages.success(request, 'Запись успешно перенесена')
 
     return redirect('master_bookings')
 
