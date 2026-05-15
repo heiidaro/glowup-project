@@ -5,6 +5,11 @@ gsap.registerPlugin(CustomEase);
 CustomEase.create("hop", "0.9, 0, 0.1, 1");
 
 document.addEventListener("DOMContentLoaded", () => {
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+
+  window.scrollTo(0, 0);
   const body = document.body;
   const introScreenEl = document.querySelector('.intro-screen');
   const containerEl = document.querySelector('.container');
@@ -246,6 +251,24 @@ document.querySelectorAll('.copy-email').forEach((el) => {
 
   const FINAL_HERO_SRC = "/static/images/img10.jpg";
 
+  const isMobileHome = () => window.matchMedia("(max-width: 768px)").matches;
+
+  const getHeroFinalState = () => {
+    if (isMobileHome()) {
+      return {
+        y: 0,
+        scale: 2.5,
+        clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+      };
+    }
+
+    return {
+      y: 120,
+      scale: 3,
+      clipPath: "polygon(20% 10%, 80% 10%, 80% 90%, 20% 90%)",
+    };
+  };
+
 
 
 
@@ -288,11 +311,7 @@ document.querySelectorAll('.copy-email').forEach((el) => {
       clipPath: "polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)",
     });
 
-    gsap.set(".hero-img", {
-      y: 120,
-      scale: 3,
-      clipPath: "polygon(20% 10%, 80% 10%, 80% 90%, 20% 90%)",
-    });
+    gsap.set(".hero-img", getHeroFinalState());
     gsap.set(".hero-img img", { scale: 1 });
 
     gsap.set(".banner-img-1", { left: "40%", rotate: -20, scale: 1 });
@@ -499,11 +518,17 @@ document.querySelectorAll('.copy-email').forEach((el) => {
       ease: "hop",
     });
 
-    imagesTL.to(".hero-img", { y: 120, duration: 1, ease: "hop" });
+    const heroFinalState = getHeroFinalState();
 
     imagesTL.to(".hero-img", {
-      scale: 3,
-      clipPath: "polygon(20% 10%, 80% 10%, 80% 90%, 20% 90%)",
+      y: heroFinalState.y,
+      duration: 1,
+      ease: "hop"
+    });
+
+    imagesTL.to(".hero-img", {
+      scale: heroFinalState.scale,
+      clipPath: heroFinalState.clipPath,
       duration: 1.5,
       ease: "hop",
       onStart: () => {

@@ -57,12 +57,14 @@
       </div>
 
       <div class="nav-logo">
-        <a href="#" class="nav-link" data-target="about" data-hover="Да, это мы)"><span>Glow <br />Up</span></a>
+        <span>Glow <br>Up</span>
       </div>
 
-      <div class="links">
+      <div class="links links-right">
         <a href="#" class="nav-link" data-target="contacts" data-hover="Ало?"><span>Контакты</span></a>
-        <a href="/login/" data-hover="Войти"><span>Аккаунт</span></a>
+        <a href="{% url 'login' %}" class="account-nav-link">
+          <span>Аккаунт</span>
+        </a>
       </div>
     </nav>
 

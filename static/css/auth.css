@@ -234,3 +234,59 @@ body {
 .social-auth-btn span {
     display: inline-block;
 }
+
+/* ================================
+   MOBILE ADAPTATION — AUTH
+================================ */
+
+@media (max-width: 520px) {
+    body {
+        background: #F7F7F5;
+    }
+
+    .auth {
+        min-height: 100svh;
+        padding: 14px;
+        align-items: start;
+    }
+
+    .auth-card {
+        width: 100%;
+        margin-top: 14px;
+        padding: 20px;
+        border-radius: 22px;
+    }
+
+    .auth-title {
+        font-size: 26px;
+        line-height: 1.15;
+    }
+
+    .auth-subtitle {
+        font-size: 14px;
+        line-height: 1.35;
+    }
+
+    .auth-field input {
+        height: 48px;
+        font-size: 16px;
+    }
+
+    .auth-radio label {
+        display: flex;
+        margin: 8px 0;
+    }
+
+    .auth-btn,
+    .social-auth-btn {
+        min-height: 48px;
+        font-size: 14px;
+    }
+
+    .auth-footer,
+    .auth-back {
+        flex-wrap: wrap;
+        text-align: center;
+        line-height: 1.4;
+    }
+}

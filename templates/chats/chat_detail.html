@@ -818,17 +818,347 @@
     color: #6B7280;
     cursor: pointer;
 }
+
+/* ================================
+   MOBILE CHAT FIX
+   На телефоне скрываем нижнее меню
+   и закрепляем поле ввода
+================================ */
+
+@media (max-width: 768px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        overflow: hidden !important;
+        background: #F7F7F5;
+    }
+
+    body {
+        padding-bottom: 0 !important;
+    }
+
+    .dashboard-container {
+        display: block !important;
+        width: 100%;
+        height: 100svh;
+        min-height: 100svh;
+        overflow: hidden !important;
+    }
+
+    /* Убираем нижнее меню только на странице чата */
+    .sidebar {
+        display: none !important;
+    }
+
+    .main-content-full {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100svh !important;
+        min-height: 100svh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #F7F7F5;
+    }
+
+    .chat-page {
+        width: 100%;
+        height: 100svh !important;
+        min-height: 100svh !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .chat-shell {
+        width: 100%;
+        height: 100svh !important;
+        min-height: 0 !important;
+
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
+
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: hidden;
+        background: #FFFFFF;
+    }
+
+    .chat-header {
+        min-height: 74px;
+        padding: 14px 12px;
+        border-bottom: 1px solid #E5E7EB;
+        background: #FFFFFF;
+        z-index: 20;
+    }
+
+    .back-link {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 14px;
+    }
+
+    .chat-avatar {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+    }
+
+    .chat-user {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .chat-user > div:last-child {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .chat-user h1 {
+        max-width: calc(100vw - 130px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 20px;
+        line-height: 1.15;
+    }
+
+    .chat-user p {
+        font-size: 13px;
+    }
+
+    /* Сообщения прокручиваются внутри области,
+       а не вся страница */
+    .messages-box {
+        min-height: 0;
+        height: 100%;
+        overflow-y: auto;
+        padding: 18px 12px 16px;
+        background: #F7F7F5;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .date-divider {
+        margin: 8px 0 14px;
+    }
+
+    .message-bubble {
+        max-width: 82%;
+        padding: 11px 12px 8px;
+        border-radius: 16px;
+    }
+
+    .message-row.own .message-bubble {
+        max-width: 82%;
+    }
+
+    .message-bubble p {
+        font-size: 14px;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .message-attachment img {
+        max-width: min(260px, 68vw);
+        max-height: 280px;
+        object-fit: cover;
+    }
+
+    .message-attachment video {
+        max-width: min(280px, 70vw);
+        max-height: 280px;
+    }
+
+    /* Превью файла / редактирования / ответа */
+    .selected-file-preview,
+    .edit-preview,
+    .reply-preview {
+        margin: 0;
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+        background: #FFFFFF;
+        z-index: 25;
+    }
+
+    .selected-file-preview.active,
+    .edit-preview.active,
+    .reply-preview.active {
+        display: flex;
+    }
+
+    .edit-preview span,
+    .reply-preview span {
+        max-width: calc(100vw - 90px);
+    }
+
+    /* Поле ввода всегда снизу */
+    .message-form {
+        position: relative;
+        z-index: 30;
+
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) 46px;
+        align-items: end;
+        gap: 8px;
+
+        padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+        border-top: 1px solid #E5E7EB;
+        background: #FFFFFF;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .file-btn {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 14px;
+    }
+
+    .message-form textarea {
+        width: 100%;
+        min-height: 42px;
+        max-height: 110px;
+        padding: 11px 13px;
+        resize: none;
+        border-radius: 16px;
+        font-size: 16px;
+        line-height: 1.35;
+    }
+
+    .message-form button {
+        width: 46px;
+        min-width: 46px;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+        border-radius: 14px;
+        justify-content: center;
+    }
+
+    .message-form button i {
+        margin: 0;
+    }
+
+    /* На телефоне оставляем только иконку отправки,
+       чтобы кнопка не занимала половину строки */
+    .message-form button {
+        font-size: 0;
+    }
+
+    .message-form button i {
+        font-size: 15px;
+    }
+
+    .message-actions {
+        display: flex;
+        opacity: 1;
+        justify-content: flex-end;
+    }
+
+    .message-action-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+    }
+
+    .delete-menu {
+        right: 0;
+        bottom: 34px;
+        z-index: 80;
+    }
+    /* Поле ввода: скрепка слева, ввод по центру, отправка справа */
+  .message-form {
+      display: grid !important;
+      grid-template-columns: 42px minmax(0, 1fr) 46px !important;
+      grid-template-areas: "attach input send" !important;
+      align-items: center !important;
+      gap: 8px !important;
+
+      padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) !important;
+      background: #FFFFFF !important;
+      border-top: 1px solid #E5E7EB !important;
+  }
+
+  /* input file не должен занимать место в сетке */
+  .message-form input[type="file"] {
+      display: none !important;
+  }
+
+  .message-form .file-btn {
+      grid-area: attach !important;
+      width: 42px !important;
+      height: 42px !important;
+      min-width: 42px !important;
+      margin: 0 !important;
+  }
+
+  .message-form textarea,
+  .message-form #messageInput {
+      grid-area: input !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      min-height: 42px !important;
+      max-height: 110px !important;
+      margin: 0 !important;
+      resize: none !important;
+  }
+
+  .message-form button[type="submit"] {
+      grid-area: send !important;
+      width: 46px !important;
+      height: 42px !important;
+      min-width: 46px !important;
+      min-height: 42px !important;
+
+      margin: 0 !important;
+      padding: 0 !important;
+
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+
+      border-radius: 14px !important;
+      font-size: 0 !important;
+  }
+
+  .message-form button[type="submit"] i {
+      font-size: 16px !important;
+      margin: 0 !important;
+  }
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const box = document.getElementById('messagesBox');
-    if (box) {
-        box.scrollTop = box.scrollHeight;
+
+    function scrollChatToBottom() {
+        if (!box) return;
+
+        requestAnimationFrame(() => {
+            box.scrollTop = box.scrollHeight;
+        });
     }
+
+    scrollChatToBottom();
 
     const messageForm = document.getElementById('messageForm');
     const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('focus', function () {
+            setTimeout(scrollChatToBottom, 250);
+        });
+
+        messageInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+            scrollChatToBottom();
+        });
+    }
     const sendBtn = document.getElementById('sendMessageBtn');
     const editPreview = document.getElementById('editPreview');
     const editPreviewText = document.getElementById('editPreviewText');

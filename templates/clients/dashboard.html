@@ -22,6 +22,51 @@
     </div>
 </div>
 
+<div class="mobile-account-profile">
+    <div class="mobile-profile-card">
+        <div class="mobile-profile-top">
+            <div class="mobile-profile-avatar">
+                {% if client.full_name %}
+                    {{ client.full_name|slice:":1"|upper }}
+                {% elif user.email %}
+                    {{ user.email|slice:":1"|upper }}
+                {% else %}
+                    К
+                {% endif %}
+            </div>
+
+            <div class="mobile-profile-main">
+                <h3>{{ client.full_name|default:"Пользователь" }}</h3>
+                <p>Клиент</p>
+            </div>
+        </div>
+
+        <div class="mobile-profile-info">
+            <div class="mobile-info-row">
+                <span>Email</span>
+                <strong>{{ user.email|default:"Не указан" }}</strong>
+            </div>
+
+            <div class="mobile-info-row">
+                <span>Телефон</span>
+                <strong>{{ user.phone|default:"Не указан" }}</strong>
+            </div>
+        </div>
+
+        <div class="mobile-profile-actions">
+            <button type="button" class="mobile-edit-btn" onclick="openSettingsModal()">
+                <i class="fas fa-gear"></i>
+                Изменить
+            </button>
+
+            <a href="{% url 'logout' %}" class="mobile-logout-btn">
+                <i class="fas fa-right-from-bracket"></i>
+                Выйти
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="dashboard-grid">
     <!-- Левый блок - Недавние сообщения -->
     <div class="dashboard-card messages-card">
@@ -1680,6 +1725,161 @@ button.icon-btn:hover {
         width: auto;
     }
 }
+
+/* ================================
+   MOBILE PROFILE + NOTIFICATIONS FIX
+================================ */
+.mobile-account-profile {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-account-profile {
+        display: block !important;
+        margin: 6px 0 18px !important;
+    }
+
+    .mobile-profile-card {
+        width: 100%;
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 20px;
+        padding: 16px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+    }
+
+    .mobile-profile-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .mobile-profile-avatar {
+        width: 54px;
+        height: 54px;
+        min-width: 54px;
+        border-radius: 50%;
+        background: #202020;
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .mobile-profile-main {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .mobile-profile-main h3 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        line-height: 1.15;
+        color: #202020;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-profile-main p {
+        margin: 0;
+        font-size: 13px;
+        color: #6B7280;
+    }
+
+    .mobile-profile-info {
+        display: grid;
+        gap: 10px;
+        padding: 12px 0;
+        border-top: 1px solid #F0F0F0;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .mobile-info-row {
+        display: grid;
+        gap: 3px;
+    }
+
+    .mobile-info-row span {
+        font-size: 12px;
+        color: #6B7280;
+    }
+
+    .mobile-info-row strong {
+        font-size: 14px;
+        color: #202020;
+        font-weight: 700;
+        word-break: break-word;
+    }
+
+    .mobile-profile-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .mobile-edit-btn,
+    .mobile-logout-btn {
+        min-height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .mobile-edit-btn {
+        border: none;
+        background: #202020;
+        color: #FFFFFF;
+    }
+
+    .mobile-logout-btn {
+        border: 1px solid #F3CACA;
+        background: #FFE1E1;
+        color: #B91C1C;
+    }
+
+    .notifications-modal {
+        z-index: 99999 !important;
+    }
+
+    .notifications-modal.active {
+        display: block !important;
+    }
+
+    .notifications-modal-card {
+        top: 76px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-height: calc(100svh - 110px) !important;
+        border-radius: 20px !important;
+    }
+
+    .notifications-modal-backdrop {
+        background: rgba(0, 0, 0, .45) !important;
+    }
+}
+
+@media (max-width: 390px) {
+    .mobile-profile-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
 
 <script>
@@ -1937,27 +2137,51 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
 {% endif %}
 </script>
 <script>
-function openNotificationsModal() {
+function moveNotificationsModalToBody() {
+    const modal = document.getElementById('notificationsModal');
+
+    if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+    }
+}
+
+window.openNotificationsModal = function () {
+    moveNotificationsModalToBody();
+
     const modal = document.getElementById('notificationsModal');
 
     if (!modal) return;
 
     modal.classList.add('active');
+    document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
-}
+};
 
-function closeNotificationsModal() {
+window.closeNotificationsModal = function () {
     const modal = document.getElementById('notificationsModal');
 
     if (!modal) return;
 
     modal.classList.remove('active');
+    document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
-}
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    moveNotificationsModalToBody();
+
+    document.querySelectorAll('.notification-trigger-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.openNotificationsModal();
+        });
+    });
+});
 
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        closeNotificationsModal();
+        window.closeNotificationsModal();
     }
 });
 </script>
