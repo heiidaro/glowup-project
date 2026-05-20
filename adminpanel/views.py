@@ -13,6 +13,9 @@ from bookings.models import Booking, PostResponse
 from reviews.models import Review
 from notifications.models import Notification
 from .models import AdminAuditLog, Complaint, SupportTicket, SupportMessage, NotificationCampaign, UserNotification
+import csv
+from django.http import HttpResponse
+from django.db.models import Avg
 
 
 def admin_required(view_func):
@@ -1191,3 +1194,65 @@ def admin_support_action(request, ticket_id):
             messages.success(request, 'Обращение снова открыто')
 
     return redirect('admin_support')
+
+
+@admin_required
+def export_platform_statistics(request):
+    from accounts.models import User
+    from masters.models import MasterProfile
+    from clients.models import ClientProfile
+    from bookings.models import Booking
+    from reviews.models import Review
+
+    try:
+        from clients.models import ClientPost
+    except Exception:
+        ClientPost = None
+
+    try:
+        from core.models import SupportTicket, Complaint
+    except Exception:
+        SupportTicket = None
+        Complaint = None
+
+    users_count = User.objects.count()
+    clients_count = ClientProfile.objects.count()
+    masters_count = MasterProfile.objects.count()
+    approved_masters_count = MasterProfile.objects.filter(
+        is_approved=True).count()
+
+    bookings_count = Booking.objects.count()
+    completed_bookings_count = Booking.objects.filter(
+        status='completed').count()
+    cancelled_bookings_count = Booking.objects.filter(
+        status='cancelled').count()
+
+    reviews_count = Review.objects.count()
+    avg_rating = Review.objects.filter(
+        is_blocked=False
+    ).aggregate(avg=Avg('rating'))['avg'] or 0
+
+    posts_count = ClientPost.objects.count() if ClientPost else 0
+    support_count = SupportTicket.objects.count() if SupportTicket else 0
+    complaints_count = Complaint.objects.count() if Complaint else 0
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    response['Content-Disposition'] = 'attachment; filename="glowup_statistics.csv"'
+
+    writer = csv.writer(response, delimiter=';')
+
+    writer.writerow(['Показатель', 'Значение'])
+    writer.writerow(['Всего пользователей', users_count])
+    writer.writerow(['Клиентов', clients_count])
+    writer.writerow(['Мастеров', masters_count])
+    writer.writerow(['Подтвержденных мастеров', approved_masters_count])
+    writer.writerow(['Всего записей', bookings_count])
+    writer.writerow(['Завершенных записей', completed_bookings_count])
+    writer.writerow(['Отмененных записей', cancelled_bookings_count])
+    writer.writerow(['Всего отзывов', reviews_count])
+    writer.writerow(['Средний рейтинг', round(avg_rating, 2)])
+    writer.writerow(['Постов клиентов', posts_count])
+    writer.writerow(['Обращений в поддержку', support_count])
+    writer.writerow(['Жалоб', complaints_count])
+
+    return response

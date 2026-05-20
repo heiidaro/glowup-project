@@ -20,6 +20,7 @@ from django.db.models import Q, Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from collections import defaultdict
+from notifications.services import create_notification
 
 
 def geocode_yandex_address(address: str):
@@ -598,6 +599,15 @@ def master_dashboard(request):
         is_blocked=False
     ).select_related('client').order_by('-created_at')[:3]
 
+    latest_user_notifications = Notification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')[:10]
+
+    unread_notifications_count = Notification.objects.filter(
+        user=request.user,
+        is_read=False
+    ).count()
+
     context = {
         'master': master_profile,
         'user': request.user,
@@ -616,6 +626,8 @@ def master_dashboard(request):
         'master_services': master_services,
         'service_categories': service_categories,
         'reviews': reviews,
+        'latest_user_notifications': latest_user_notifications,
+        'unread_notifications_count': unread_notifications_count,
     }
 
     return render(request, 'masters/dashboard.html', context)
@@ -821,21 +833,41 @@ def master_bookings(request):
 def cancel_booking(request, booking_id):
     """Отмена записи мастером"""
     if request.method == 'POST':
-        booking = get_object_or_404(Booking, id=booking_id)
+        booking = get_object_or_404(
+            Booking.objects.select_related(
+                'client',
+                'client__user',
+                'master',
+                'master__user'
+            ),
+            id=booking_id
+        )
 
-        # Проверяем, что мастер имеет отношение к записи
         if booking.master.user != request.user:
             messages.error(request, 'У вас нет прав для отмены этой записи')
             return redirect('master_bookings')
 
-        # Проверяем, можно ли отменить
         if not booking.can_cancel:
             messages.error(
                 request, 'Нельзя отменить запись менее чем за 24 часа')
             return redirect('master_bookings')
 
         booking.status = 'cancelled'
-        booking.save()
+        booking.save(update_fields=['status', 'updated_at'])
+
+        booking_date = booking.date.strftime(
+            "%d.%m.%Y") if booking.date else "не указана"
+        booking_time = booking.time.strftime(
+            "%H:%M") if booking.time else "не указано"
+
+        create_notification(
+            user=booking.client.user,
+            notification_type='booking_cancelled',
+            title='Запись отменена',
+            message=f'Мастер {booking.master.display_name} отменил вашу запись на {booking_date} в {booking_time}.',
+            link='/client/bookings/',
+            send_email=True
+        )
 
         messages.success(request, 'Запись успешно отменена')
 
@@ -1657,7 +1689,7 @@ def create_master_booking(request, master_id):
 
     client_profile = request.user.client_profile
 
-    Booking.objects.create(
+    booking = Booking.objects.create(
         client=client_profile,
         master=master,
         service=service.name,
@@ -1669,6 +1701,15 @@ def create_master_booking(request, master_id):
         status='active',
         client_note=client_note,
         client_photo=client_photo
+    )
+
+    create_notification(
+        user=master.user,
+        notification_type='booking_created',
+        title='Новая запись',
+        message=f'Клиент {client_profile.full_name} записался на услугу "{service.name}" {booking.date.strftime("%d.%m.%Y")} в {booking.time.strftime("%H:%M")}.',
+        link='/master/bookings/',
+        send_email=True
     )
 
     messages.success(request, 'Вы успешно записались к мастеру')

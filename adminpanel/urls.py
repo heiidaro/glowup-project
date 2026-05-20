@@ -46,4 +46,6 @@ urlpatterns = [
          name='admin_support_detail'),
     path('support/<int:ticket_id>/action/',
          views.admin_support_action, name='admin_support_action'),
+    path('statistics/export/', views.export_platform_statistics,
+         name='admin_export_statistics'),
 ]

@@ -19,6 +19,7 @@ from django.contrib.auth import update_session_auth_hash
 from calendar import monthrange
 from chats.models import ChatMessage
 from django.urls import reverse
+from notifications.services import create_notification
 
 
 def get_calendar_days(year, month, active_bookings, archived_bookings):
@@ -296,6 +297,15 @@ def client_dashboard(request):
         'chat__master__user'
     ).order_by('-created_at')[:3]
 
+    latest_user_notifications = Notification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')[:10]
+
+    unread_notifications_count = Notification.objects.filter(
+        user=request.user,
+        is_read=False
+    ).count()
+
     context = {
         'client': client_profile,
         'user': request.user,
@@ -311,6 +321,8 @@ def client_dashboard(request):
         'month_name': get_month_name(current_month),
         'upcoming_bookings': upcoming_bookings,
         'recent_messages': recent_messages,
+        'latest_user_notifications': latest_user_notifications,
+        'unread_notifications_count': unread_notifications_count,
     }
 
     return render(request, 'clients/dashboard.html', context)
@@ -395,82 +407,6 @@ def update_profile(request):
         return redirect('client_dashboard')
 
     return redirect('client_dashboard')
-
-
-# @login_required
-# def client_bookings(request):
-#     # Проверяем роль
-#     if request.user.role != 'client':
-#         messages.error(request, 'У вас нет доступа к этой странице')
-#         return redirect('home')
-
-#     # Получаем профиль клиента
-#     client_profile = ClientProfile.objects.get(user=request.user)
-
-#     # Текущая дата и время
-#     now = timezone.now()
-#     today = now.date()
-
-#     # Получаем месяц и год из GET параметров
-#     try:
-#         current_month = int(request.GET.get('month', now.month))
-#         current_year = int(request.GET.get('year', now.year))
-#     except ValueError:
-#         current_month = now.month
-#         current_year = now.year
-
-#     # Все записи клиента
-#     all_bookings = Booking.objects.filter(
-#         client=client_profile).select_related('master')
-#     print(
-#         f"=== Всего записей для клиента {client_profile.id}: {all_bookings.count()} ===")
-#     for b in all_bookings:
-#         print(
-#             f"  Запись {b.id}: дата={b.date}, статус={b.status}, мастер={b.master.display_name}")
-
-#     # Разделяем на активные и архивные
-#     active_bookings = []
-#     archived_bookings = []
-
-#     for booking in all_bookings:
-#         booking_datetime = datetime.combine(booking.date, booking.time)
-#         booking_datetime = timezone.make_aware(booking_datetime)
-
-#         if booking.date > today or (booking.date == today and booking.time > now.time()):
-#             if booking.status == 'active':
-#                 active_bookings.append(booking)
-#             else:
-#                 archived_bookings.append(booking)
-#         else:
-#             archived_bookings.append(booking)
-
-#     # Фильтруем для отображения в списках
-#     active_display = [b for b in active_bookings if b.date >= today]
-#     archived_display = [
-#         b for b in archived_bookings if b.date < today or b.status != 'active']
-
-#     # Получаем записи для календаря за выбранный месяц
-#     month_active = [b for b in active_bookings if b.date.year ==
-#                     current_year and b.date.month == current_month]
-#     month_archived = [b for b in archived_bookings if b.date.year ==
-#                       current_year and b.date.month == current_month]
-
-#     # Генерируем дни для календаря
-#     calendar_days = get_calendar_days(
-#         current_year, current_month, month_active, month_archived)
-
-#     context = {
-#         'active_bookings': active_display,
-#         'archived_bookings': archived_display,
-#         'calendar_days': calendar_days,
-#         'current_month': current_month,
-#         'current_year': current_year,
-#         'month_name': get_month_name(current_month),
-#         'now': now,
-#         'today': today,
-#     }
-
-#     return render(request, 'clients/bookings.html', context)
 
 
 @login_required
@@ -593,6 +529,20 @@ def cancel_booking(request, booking_id):
 
         booking.status = 'cancelled'
         booking.save()
+
+        booking_date = booking.date.strftime(
+            "%d.%m.%Y") if booking.date else "не указана"
+        booking_time = booking.time.strftime(
+            "%H:%M") if booking.time else "не указано"
+
+        create_notification(
+            user=booking.master.user,
+            notification_type='booking_cancelled',
+            title='Клиент отменил запись',
+            message=f'Клиент {booking.client.full_name} отменил запись на {booking_date} в {booking_time}.',
+            link='/master/bookings/',
+            send_email=True
+        )
 
         messages.success(request, 'Запись успешно отменена')
 

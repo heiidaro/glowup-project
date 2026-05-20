@@ -8,6 +8,14 @@ class Notification(models.Model):
         ('response', 'Отклик на пост'),
         ('response_accepted', 'Отклик принят'),
         ('response_rejected', 'Отклик отклонен'),
+
+        ('booking_created', 'Новая запись'),
+        ('booking_confirmed', 'Запись подтверждена'),
+        ('booking_cancelled', 'Запись отменена'),
+        ('booking_rescheduled', 'Запись перенесена'),
+
+        ('new_message', 'Новое сообщение'),
+
         ('system', 'Системное уведомление'),
     ]
 

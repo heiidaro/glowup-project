@@ -6,6 +6,7 @@ from .models import Chat, ChatMessage
 from clients.models import ClientProfile
 from masters.models import MasterProfile
 from django.utils import timezone
+from notifications.services import create_notification
 
 
 @login_required
@@ -94,6 +95,30 @@ def chat_detail(request, chat_id):
 
             chat.last_message = message
             chat.save(update_fields=['last_message'])
+
+            if request.user == chat.client.user:
+                recipient = chat.master.user
+            else:
+                recipient = chat.client.user
+
+            sender_name = request.user.email or 'Пользователь'
+
+            if hasattr(request.user, 'client_profile') and request.user.client_profile:
+                if request.user.client_profile.full_name:
+                    sender_name = request.user.client_profile.full_name
+
+            if hasattr(request.user, 'master_profile') and request.user.master_profile:
+                if request.user.master_profile.display_name:
+                    sender_name = request.user.master_profile.display_name
+
+            create_notification(
+                user=recipient,
+                notification_type='new_message',
+                title='Новое сообщение',
+                message=f'Вам пришло новое сообщение от {sender_name}.',
+                link=f'/chats/{chat.id}/',
+                send_email=True
+            )
 
         return redirect('chat_detail', chat_id=chat.id)
 

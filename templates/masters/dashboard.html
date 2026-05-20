@@ -781,7 +781,7 @@
 
         <div class="notifications-modal-body">
             {% if unread_notifications_count > 0 %}
-                <form method="POST" action="{% url 'mark_all_notifications_read' %}" class="notifications-read-all-form">
+                <form method="POST" action="{% url 'notifications_mark_all_read' %}" class="notifications-read-all-form">
                     {% csrf_token %}
                     <button type="submit" class="notifications-read-all-btn">
                         Отметить все прочитанными
@@ -828,7 +828,7 @@
                                 {% endif %}
 
                                 {% if not item.is_read %}
-                                    <form method="POST" action="{% url 'mark_notification_read' item.id %}">
+                                    <form method="POST" action="{% url 'notifications_mark_read' item.id %}">
                                         {% csrf_token %}
                                         <button type="submit">Прочитано</button>
                                     </form>
@@ -847,7 +847,7 @@
                 {% endfor %}
             </div>
 
-            <a href="{% url 'user_notifications' %}" class="notifications-full-link">
+            <a href="{% url 'notifications_list' %}" class="notifications-full-link">
                 Открыть все уведомления
             </a>
         </div>
@@ -3189,6 +3189,77 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         window.closeNotificationsModal();
     }
+});
+</script>
+<script>
+function getCookie(name) {
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+
+        if (cookie.startsWith(name + '=')) {
+            return decodeURIComponent(cookie.substring(name.length + 1));
+        }
+    }
+
+    return null;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.notifications-read-all-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Ошибка запроса: ' + response.status);
+                }
+
+                return response.json();
+            })
+            .then(function (data) {
+                if (!data.success) return;
+
+                document.querySelectorAll('.notifications-mini-item.unread').forEach(function (item) {
+                    item.classList.remove('unread');
+
+                    const bottom = item.querySelector('.notifications-mini-bottom');
+
+                    if (bottom) {
+                        const formInside = bottom.querySelector('form');
+                        if (formInside) {
+                            formInside.outerHTML = '<span>Прочитано</span>';
+                        }
+                    }
+                });
+
+                document.querySelectorAll('.notification-dot').forEach(function (dot) {
+                    dot.remove();
+                });
+
+                const modalHeaderText = document.querySelector('.notifications-modal-header p');
+                if (modalHeaderText) {
+                    modalHeaderText.textContent = 'Новых уведомлений нет';
+                }
+
+                form.remove();
+            })
+            .catch(function (error) {
+                console.error('Не удалось отметить уведомления прочитанными:', error);
+
+                // запасной вариант — обычная отправка формы
+                form.submit();
+            });
+        });
+    });
 });
 </script>
 {% endblock %}

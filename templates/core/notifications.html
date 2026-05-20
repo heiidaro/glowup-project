@@ -1,193 +1,99 @@
-{% extends 'base_no_sidebar.html' %}
+{% extends 'base.html' %}
 
 {% block title %}Уведомления{% endblock %}
 
 {% block content %}
-<div class="notifications-page">
-    <div class="notifications-header">
-        <div>
-            <h1>Уведомления</h1>
-            <p>Здесь отображаются системные уведомления, записи, поддержка и важные события.</p>
-        </div>
+<div class="content-header">
+    <div class="welcome-section">
+        <h1>Уведомления</h1>
+        <p>Все системные события вашего аккаунта</p>
+    </div>
+</div>
 
-        {% if unread_count > 0 %}
-        <form method="POST" action="{% url 'mark_all_notifications_read' %}">
+<div class="dashboard-card full-width">
+    <div class="card-header">
+        <h3>Список уведомлений</h3>
+
+        {% if unread_notifications_count > 0 %}
+        <form method="POST" action="{% url 'notifications_mark_all_read' %}">
             {% csrf_token %}
-            <button class="notifications-btn light" type="submit">
+            <button type="submit" class="notifications-read-all-btn">
                 Отметить все прочитанными
             </button>
         </form>
         {% endif %}
     </div>
 
-    <div class="notifications-card">
-        <div class="notifications-card-header">
-            <h3>Список уведомлений</h3>
-
-            {% if unread_count > 0 %}
-                <span class="unread-pill">{{ unread_count }} новых</span>
-            {% else %}
-                <span class="read-pill">Нет новых</span>
-            {% endif %}
-        </div>
-
-        <div class="notifications-list">
-            {% for item in notifications %}
-                <div class="notification-item {% if not item.is_read %}unread{% endif %}">
-                    <div class="notification-icon">
-                        {% if item.notification_type == 'booking' %}
-                            <i class="fas fa-calendar-check"></i>
-                        {% elif item.notification_type == 'support' %}
-                            <i class="fas fa-headset"></i>
-                        {% elif item.notification_type == 'complaint' %}
-                            <i class="fas fa-flag"></i>
-                        {% elif item.notification_type == 'chat' %}
-                            <i class="fas fa-comment"></i>
-                        {% else %}
-                            <i class="fas fa-bell"></i>
-                        {% endif %}
-                    </div>
-
-                    <div class="notification-content">
-                        <div class="notification-top">
-                            <h4>{{ item.title }}</h4>
-                            <span>{{ item.created_at|date:"d.m.Y H:i" }}</span>
-                        </div>
-
-                        <p>{{ item.message }}</p>
-
-                        <div class="notification-meta">
-                            {% if item.notification_type == 'system' %}
-                                <span>Системное уведомление</span>
-                            {% elif item.notification_type == 'booking' %}
-                                <span>Запись</span>
-                            {% elif item.notification_type == 'support' %}
-                                <span>Поддержка</span>
-                            {% elif item.notification_type == 'complaint' %}
-                                <span>Жалоба</span>
-                            {% elif item.notification_type == 'chat' %}
-                                <span>Сообщение</span>
-                            {% endif %}
-
-                            {% if item.is_read %}
-                                <span>Прочитано</span>
+    <div class="card-content">
+        {% if notifications %}
+            <div class="notifications-mini-list">
+                {% for item in notifications %}
+                    <div class="notifications-mini-item {% if not item.is_read %}unread{% endif %}">
+                        <div class="notifications-mini-icon">
+                            {% if item.notification_type == 'booking_created' or item.notification_type == 'booking_confirmed' or item.notification_type == 'booking_cancelled' or item.notification_type == 'booking_rescheduled' %}
+                                <i class="fas fa-calendar-check"></i>
+                            {% elif item.notification_type == 'new_message' %}
+                                <i class="fas fa-comment"></i>
                             {% else %}
-                                <span>Новое</span>
+                                <i class="fas fa-bell"></i>
                             {% endif %}
                         </div>
-                    </div>
 
-                    {% if not item.is_read %}
-                    <form method="POST" action="{% url 'mark_notification_read' item.id %}">
-                        {% csrf_token %}
-                        <button class="read-btn" type="submit">
-                            Прочитано
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-            {% empty %}
-                <div class="notifications-empty">
-                    <i class="fas fa-bell-slash"></i>
-                    <h3>Уведомлений пока нет</h3>
-                    <p>Когда появятся важные события, они будут отображаться здесь.</p>
-                </div>
-            {% endfor %}
-        </div>
+                        <div class="notifications-mini-content">
+                            <div class="notifications-mini-top">
+                                <h4>{{ item.title }}</h4>
+                                <span>{{ item.created_at|date:"d.m.Y H:i" }}</span>
+                            </div>
+
+                            <p>{{ item.message }}</p>
+
+                            <div class="notifications-mini-bottom">
+                                {% if item.link %}
+                                    <a href="{{ item.link }}">Перейти</a>
+                                {% endif %}
+
+                                {% if not item.is_read %}
+                                    <form method="POST" action="{% url 'notifications_mark_read' item.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit">Прочитано</button>
+                                    </form>
+                                {% else %}
+                                    <span>Прочитано</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Уведомлений пока нет</p>
+        {% endif %}
     </div>
 </div>
 
 <style>
-.notifications-page {
-    padding: 26px;
-}
-
-.notifications-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 22px;
-}
-
-.notifications-header h1 {
-    font-size: 30px;
-    font-weight: 600;
-    color: #202020;
-    margin-bottom: 6px;
-}
-
-.notifications-header p {
-    color: #6B7280;
-    font-size: 14px;
-    max-width: 680px;
-}
-
-.notifications-card {
-    background: #FFFFFF;
-    border: 1px solid #E5E7EB;
-    border-radius: 20px;
-    box-shadow: 0 10px 28px rgba(0,0,0,.04);
-    overflow: hidden;
-}
-
-.notifications-card-header {
-    padding: 16px 18px;
-    border-bottom: 1px solid #E5E7EB;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.notifications-card-header h3 {
-    font-size: 17px;
-    font-weight: 600;
-    color: #202020;
-}
-
-.unread-pill,
-.read-pill {
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.unread-pill {
-    background: #FEF3C7;
-    color: #92400E;
-}
-
-.read-pill {
-    background: #DCFCE7;
-    color: #166534;
-}
-
-.notifications-list {
-    padding: 12px;
+.notifications-mini-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
-.notification-item {
+.notifications-mini-item {
     display: grid;
-    grid-template-columns: 46px 1fr auto;
+    grid-template-columns: 44px 1fr;
     gap: 12px;
-    align-items: flex-start;
     padding: 14px;
-    border: 1px solid #E5E7EB;
     border-radius: 16px;
+    border: 1px solid #E5E7EB;
     background: #FFFFFF;
 }
 
-.notification-item.unread {
+.notifications-mini-item.unread {
     background: #FFFBEB;
     border-color: #FDE68A;
 }
 
-.notification-icon {
+.notifications-mini-icon {
     width: 42px;
     height: 42px;
     border-radius: 14px;
@@ -198,114 +104,89 @@
     justify-content: center;
 }
 
-.notification-content {
-    min-width: 0;
-}
-
-.notification-top {
+.notifications-mini-top {
     display: flex;
-    align-items: flex-start;
     justify-content: space-between;
-    gap: 14px;
+    gap: 12px;
     margin-bottom: 6px;
 }
 
-.notification-top h4 {
+.notifications-mini-top h4 {
+    margin: 0;
     font-size: 15px;
-    font-weight: 600;
     color: #202020;
 }
 
-.notification-top span {
+.notifications-mini-top span {
     font-size: 12px;
     color: #6B7280;
     white-space: nowrap;
 }
 
-.notification-content p {
-    color: #4B5563;
+.notifications-mini-content p {
+    margin: 0;
     font-size: 14px;
-    line-height: 1.45;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-.notification-meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-}
-
-.notification-meta span {
-    padding: 5px 8px;
-    border-radius: 999px;
-    background: #F3F4F6;
     color: #4B5563;
-    font-size: 12px;
+    line-height: 1.45;
 }
 
-.read-btn,
-.notifications-btn {
+.notifications-mini-bottom {
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.notifications-mini-bottom a {
+    color: #202020;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.notifications-mini-bottom form {
+    margin: 0;
+}
+
+.notifications-mini-bottom button,
+.notifications-read-all-btn {
     border: none;
-    border-radius: 12px;
+    border-radius: 999px;
+    padding: 8px 12px;
     background: #202020;
     color: #FFFFFF;
-    padding: 10px 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     cursor: pointer;
-    white-space: nowrap;
 }
 
-.notifications-btn.light {
-    background: #FFFFFF;
-    color: #202020;
-    border: 1px solid #E5E7EB;
-}
-
-.read-btn:hover,
-.notifications-btn:hover {
-    opacity: .9;
-}
-
-.notifications-empty {
-    padding: 60px 20px;
-    text-align: center;
+.notifications-mini-bottom span {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: #F3F4F6;
     color: #6B7280;
+    font-size: 12px;
 }
 
-.notifications-empty i {
-    font-size: 38px;
-    color: #D1D5DB;
-    margin-bottom: 12px;
-}
-
-.notifications-empty h3 {
-    color: #202020;
-    font-size: 18px;
-    margin-bottom: 6px;
-}
-
-.notifications-empty p {
-    font-size: 14px;
-}
-
-@media (max-width: 760px) {
-    .notifications-header {
-        flex-direction: column;
+@media (max-width: 768px) {
+    .notifications-mini-item {
+        grid-template-columns: 1fr;
     }
 
-    .notification-item {
-        grid-template-columns: 42px 1fr;
-    }
-
-    .notification-item form {
-        grid-column: 2;
-    }
-
-    .notification-top {
+    .notifications-mini-top {
         flex-direction: column;
         gap: 4px;
+    }
+
+    .notifications-mini-bottom {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .notifications-mini-bottom button,
+    .notifications-read-all-btn {
+        width: 100%;
     }
 }
 </style>
