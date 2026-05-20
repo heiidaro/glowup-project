@@ -16,6 +16,14 @@ from .models import AdminAuditLog, Complaint, SupportTicket, SupportMessage, Not
 import csv
 from django.http import HttpResponse
 from django.db.models import Avg
+from io import BytesIO
+
+from django.http import HttpResponse
+from django.db.models import Avg
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 
 def admin_required(view_func):
@@ -1218,10 +1226,14 @@ def export_platform_statistics(request):
     users_count = User.objects.count()
     clients_count = ClientProfile.objects.count()
     masters_count = MasterProfile.objects.count()
+
     approved_masters_count = MasterProfile.objects.filter(
         is_approved=True).count()
 
     bookings_count = Booking.objects.count()
+    active_bookings_count = Booking.objects.filter(status='active').count()
+    confirmed_bookings_count = Booking.objects.filter(
+        status='confirmed').count()
     completed_bookings_count = Booking.objects.filter(
         status='completed').count()
     cancelled_bookings_count = Booking.objects.filter(
@@ -1236,23 +1248,92 @@ def export_platform_statistics(request):
     support_count = SupportTicket.objects.count() if SupportTicket else 0
     complaints_count = Complaint.objects.count() if Complaint else 0
 
-    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
-    response['Content-Disposition'] = 'attachment; filename="glowup_statistics.csv"'
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = 'Статистика Glow Up'
 
-    writer = csv.writer(response, delimiter=';')
+    # Стили
+    title_fill = PatternFill('solid', fgColor='202020')
+    header_fill = PatternFill('solid', fgColor='EDEDE8')
+    border_color = 'D9D9D9'
 
-    writer.writerow(['Показатель', 'Значение'])
-    writer.writerow(['Всего пользователей', users_count])
-    writer.writerow(['Клиентов', clients_count])
-    writer.writerow(['Мастеров', masters_count])
-    writer.writerow(['Подтвержденных мастеров', approved_masters_count])
-    writer.writerow(['Всего записей', bookings_count])
-    writer.writerow(['Завершенных записей', completed_bookings_count])
-    writer.writerow(['Отмененных записей', cancelled_bookings_count])
-    writer.writerow(['Всего отзывов', reviews_count])
-    writer.writerow(['Средний рейтинг', round(avg_rating, 2)])
-    writer.writerow(['Постов клиентов', posts_count])
-    writer.writerow(['Обращений в поддержку', support_count])
-    writer.writerow(['Жалоб', complaints_count])
+    thin_border = Border(
+        left=Side(style='thin', color=border_color),
+        right=Side(style='thin', color=border_color),
+        top=Side(style='thin', color=border_color),
+        bottom=Side(style='thin', color=border_color),
+    )
+
+    # Заголовок
+    sheet.merge_cells('A1:B1')
+    sheet['A1'] = 'Статистика платформы Glow Up'
+    sheet['A1'].font = Font(size=16, bold=True, color='FFFFFF')
+    sheet['A1'].fill = title_fill
+    sheet['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    sheet.row_dimensions[1].height = 28
+
+    # Шапка таблицы
+    sheet['A3'] = 'Показатель'
+    sheet['B3'] = 'Значение'
+
+    for cell in sheet[3]:
+        cell.font = Font(bold=True, color='202020')
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = thin_border
+
+    rows = [
+        ['Всего пользователей', users_count],
+        ['Клиентов', clients_count],
+        ['Мастеров', masters_count],
+        ['Подтвержденных мастеров', approved_masters_count],
+        ['Всего записей', bookings_count],
+        ['Активных записей', active_bookings_count],
+        ['Подтвержденных записей', confirmed_bookings_count],
+        ['Завершенных записей', completed_bookings_count],
+        ['Отмененных записей', cancelled_bookings_count],
+        ['Всего отзывов', reviews_count],
+        ['Средний рейтинг', round(avg_rating, 2)],
+        ['Постов клиентов', posts_count],
+        ['Обращений в поддержку', support_count],
+        ['Жалоб', complaints_count],
+    ]
+
+    start_row = 4
+
+    for index, row in enumerate(rows, start=start_row):
+        sheet.cell(row=index, column=1, value=row[0])
+        sheet.cell(row=index, column=2, value=row[1])
+
+        for col in range(1, 3):
+            cell = sheet.cell(row=index, column=col)
+            cell.border = thin_border
+            cell.alignment = Alignment(vertical='center')
+
+        sheet.cell(row=index, column=1).font = Font(color='202020')
+        sheet.cell(row=index, column=2).font = Font(bold=True, color='202020')
+        sheet.cell(row=index, column=2).alignment = Alignment(
+            horizontal='center', vertical='center')
+
+    # Ширина колонок
+    sheet.column_dimensions['A'].width = 34
+    sheet.column_dimensions['B'].width = 16
+
+    # Заморозка шапки
+    sheet.freeze_panes = 'A4'
+
+    # Автофильтр
+    sheet.auto_filter.ref = f'A3:B{start_row + len(rows) - 1}'
+
+    # Сохраняем в память
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="glowup_statistics.xlsx"'
 
     return response

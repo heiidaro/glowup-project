@@ -3,10 +3,17 @@
 {% block title %}Главная{% endblock %}
 
 {% block content %}
-<div class="admin-page-header">
+<div class="admin-page-header admin-dashboard-header">
     <div>
         <h1>Панель администратора</h1>
         <p>Общая статистика платформы, последние пользователи, записи и отзывы</p>
+    </div>
+
+    <div class="admin-header-actions">
+        <a href="{% url 'admin_export_statistics' %}" class="admin-export-btn">
+            <i class="fas fa-file-excel"></i>
+            Экспорт статистики
+        </a>
     </div>
 </div>
 
@@ -118,9 +125,6 @@
     </div>
 
     <div class="admin-card">
-      <a href="{% url 'admin_export_statistics' %}" class="admin-btn admin-btn-primary">
-          Экспорт статистики
-      </a>
         <div class="admin-card-header">
             <h3>Отзывы на платформе</h3>
             <a href="{% url 'admin_reviews' %}" class="admin-btn light">Все</a>
@@ -189,4 +193,61 @@
         </div>
     </div>
 </div>
+<style>
+.admin-dashboard-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.admin-header-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.admin-export-btn {
+    min-height: 46px;
+    padding: 0 18px;
+    border-radius: 14px;
+    background: #202020;
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10);
+    transition: 0.2s ease;
+}
+
+.admin-export-btn:hover {
+    background: #111111;
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+.admin-export-btn i {
+    font-size: 15px;
+}
+
+@media (max-width: 768px) {
+    .admin-dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-header-actions {
+        width: 100%;
+    }
+
+    .admin-export-btn {
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}
