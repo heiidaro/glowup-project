@@ -71,7 +71,6 @@ def chat_detail(request, chat_id):
         read_at=timezone.now()
     )
 
-    # === ОТПРАВКА СООБЩЕНИЯ / ФАЙЛА ===
     if request.method == 'POST':
         content = request.POST.get('content', '').strip()
         attachment = request.FILES.get('attachment')
