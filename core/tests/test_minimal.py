@@ -14,8 +14,6 @@ from notifications.services import create_notification
 
 
 class MinimalProjectTests(SimpleTestCase):
-    """Минимальные тест-кейсы основной логики веб-приложения Glow Up."""
-
     def test_normalize_email_contact(self):
         """Проверка нормализации email при регистрации."""
         result = normalize_contact('USER@MAIL.RU')
