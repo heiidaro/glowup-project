@@ -1880,6 +1880,57 @@ button.icon-btn:hover {
     }
 }
 
+/* Адаптация дашборда под MacBook Air */
+@media (min-width: 1201px) and (max-width: 1500px) {
+    .dashboard-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        gap: 18px !important;
+    }
+
+    .dashboard-card {
+        min-width: 0 !important;
+    }
+
+    .dashboard-card.full-width {
+        grid-column: 1 / -1 !important;
+    }
+
+    .card-header {
+        padding: 14px 16px !important;
+    }
+
+    .card-content {
+        padding: 16px !important;
+    }
+
+    .recent-message-item,
+    .master-item,
+    .response-item,
+    .booking-item {
+        min-width: 0 !important;
+    }
+
+    .recent-message-content,
+    .master-info,
+    .response-info,
+    .booking-info {
+        min-width: 0 !important;
+    }
+
+    .recent-message-content h4,
+    .master-info h4,
+    .response-info h4,
+    .booking-info h4 {
+        overflow-wrap: anywhere !important;
+    }
+}
+
+@media (min-width: 1201px) and (max-width: 1320px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 </style>
 
 <script>

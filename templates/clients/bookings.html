@@ -135,8 +135,14 @@
                 {% for booking in archived_bookings %}
                 <div class="booking-card archived" data-booking-date="{{ booking.date|date:'Y-m-d' }}">
                     <div class="booking-card-header">
-                        <h3><h3>{{ booking.master.display_name|default:booking.master.user.email|default:"Мастер" }}</h3></h3>
-                        <span class="booking-status">{{ booking.get_status_display }}</span>
+                        <h3>{{ booking.master.display_name|default:booking.master.user.email|default:"Мастер" }}</h3>
+                        <span class="booking-status">
+                            {% if booking.is_past_booking %}
+                                Запись прошла
+                            {% else %}
+                                {{ booking.get_status_display }}
+                            {% endif %}
+                        </span>
                     </div>
 
                     <div class="booking-card-body">

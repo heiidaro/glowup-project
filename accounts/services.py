@@ -24,11 +24,11 @@ def generate_code(length=6) -> str:
 
 
 def send_verification_email(email, code):
-    subject = "Код подтверждения GlowUp"
+    subject = "Код подтверждения Сияй"
     message = (
         f"Ваш код подтверждения: {code}\n\n"
         f"Код действует 10 минут.\n"
-        f"Если вы не регистрировались на GlowUp, просто проигнорируйте это письмо."
+        f"Если вы не регистрировались на Сияй, просто проигнорируйте это письмо."
     )
 
     try:
@@ -92,11 +92,11 @@ def verify_pending_code(pending: PendingSignup, code: str) -> bool:
 
 
 def send_verification_email(email, code):
-    subject = "Код подтверждения GlowUp"
+    subject = "Код подтверждения Сияй"
     message = (
         f"Ваш код подтверждения: {code}\n\n"
         f"Код действует 10 минут.\n"
-        f"Если вы не регистрировались на GlowUp, просто проигнорируйте это письмо."
+        f"Если вы не регистрировались на Сияй, просто проигнорируйте это письмо."
     )
 
     try:

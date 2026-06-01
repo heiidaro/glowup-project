@@ -229,7 +229,8 @@ def client_dashboard(request):
     )
 
     # Данные для календаря
-    today = datetime.now()
+    now = timezone.localtime()
+    today = now.date()
 
     try:
         current_month = int(request.GET.get('month', today.month))
@@ -262,9 +263,9 @@ def client_dashboard(request):
     else:
         selected_date_bookings = Booking.objects.filter(
             client=client_profile,
-            date=today.date()
+            date=today
         ).select_related('master')
-        selected_date = today.date().isoformat()
+        selected_date = today.isoformat()
 
     # Генерируем дни для календаря
     calendar_days = get_dashboard_calendar_days(
@@ -280,11 +281,27 @@ def client_dashboard(request):
         post__client=client_profile
     ).select_related('master', 'post').order_by('-created_at')[:3]
 
-    upcoming_bookings = Booking.objects.filter(
+    all_upcoming_bookings = Booking.objects.filter(
         client=client_profile,
-        date__gte=timezone.now().date(),
-        status='active'
-    ).order_by('date', 'time')[:5]
+        status='active',
+        date__gte=today
+    ).select_related(
+        'master',
+        'master__user'
+    ).order_by('date', 'time')
+
+    upcoming_bookings = []
+
+    for booking in all_upcoming_bookings:
+        booking_datetime = timezone.make_aware(
+            datetime.combine(booking.date, booking.time),
+            timezone.get_current_timezone()
+        )
+
+        if booking_datetime > now:
+            upcoming_bookings.append(booking)
+
+    upcoming_bookings = upcoming_bookings[:5]
 
     recent_messages = ChatMessage.objects.filter(
         chat__client=client_profile
@@ -413,24 +430,45 @@ def update_profile(request):
 def client_bookings(request):
     client_profile = get_object_or_404(ClientProfile, user=request.user)
 
-    active_bookings = Booking.objects.filter(
-        client=client_profile,
-        status='active'
+    now = timezone.localtime()
+    today = now.date()
+
+    all_bookings = Booking.objects.filter(
+        client=client_profile
     ).select_related(
-        'master', 'master__user'
+        'master',
+        'master__user'
     ).order_by('date', 'time')
 
-    archived_bookings = Booking.objects.filter(
-        client=client_profile,
-        status__in=['completed', 'cancelled', 'expired']
-    ).select_related(
-        'master', 'master__user'
-    ).order_by('-date', '-time')
+    active_bookings = []
+    archived_bookings = []
+
+    for booking in all_bookings:
+        booking_datetime = timezone.make_aware(
+            datetime.combine(booking.date, booking.time),
+            timezone.get_current_timezone()
+        )
+
+        is_future_booking = booking_datetime > now
+
+        if booking.status == 'active' and is_future_booking:
+            active_bookings.append(booking)
+        else:
+            booking.is_past_booking = booking.status == 'active' and not is_future_booking
+            archived_bookings.append(booking)
+
+    archived_bookings.sort(
+        key=lambda item: (item.date, item.time),
+        reverse=True
+    )
 
     # Текущий месяц/год для календаря
-    today = timezone.localdate()
-    current_month = int(request.GET.get('month', today.month))
-    current_year = int(request.GET.get('year', today.year))
+    try:
+        current_month = int(request.GET.get('month', today.month))
+        current_year = int(request.GET.get('year', today.year))
+    except ValueError:
+        current_month = today.month
+        current_year = today.year
 
     month_names = {
         1: 'Январь',
@@ -447,19 +485,24 @@ def client_bookings(request):
         12: 'Декабрь',
     }
 
-    # Все записи клиента за выбранный месяц
     month_bookings = Booking.objects.filter(
         client=client_profile,
         date__year=current_year,
         date__month=current_month
-    )
+    ).select_related('master', 'master__user')
 
-    # Если в один день несколько записей — приоритет у active
     bookings_by_day = {}
+
     for booking in month_bookings:
         day_num = booking.date.day
 
-        booking_type = 'active' if booking.status == 'active' else 'archived'
+        booking_datetime = timezone.make_aware(
+            datetime.combine(booking.date, booking.time),
+            timezone.get_current_timezone()
+        )
+
+        is_future_booking = booking.status == 'active' and booking_datetime > now
+        booking_type = 'active' if is_future_booking else 'archived'
 
         if day_num not in bookings_by_day:
             bookings_by_day[day_num] = booking_type
@@ -467,7 +510,6 @@ def client_bookings(request):
             bookings_by_day[day_num] = 'active'
 
     first_weekday, days_in_month = monthrange(current_year, current_month)
-    # monthrange: Monday=0 ... Sunday=6
     leading_empty_days = first_weekday
 
     calendar_days = []
@@ -496,7 +538,7 @@ def client_bookings(request):
         'month_name': month_names[current_month],
         'current_month': current_month,
         'current_year': current_year,
-        'now': timezone.now(),
+        'now': now,
     })
 
 

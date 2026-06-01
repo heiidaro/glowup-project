@@ -102,10 +102,12 @@ body {
 /* Main Content */
 .main-content {
     grid-column: 2;
-    padding: 70px 100px 70px 100px;
+    padding: 48px 56px;
     background: #F7F7F5;
     min-height: 100vh;
-    min-width: 100vh;
+    min-width: 0;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .content-header {
@@ -1230,5 +1232,101 @@ iframe {
     .booking-card,
     .profile-card {
         border-radius: 16px;
+    }
+}
+
+/* ================================
+   LAPTOP ADAPTATION — MacBook Air / небольшие ноутбуки
+================================ */
+
+@media (min-width: 1201px) and (max-width: 1500px) {
+    .dashboard-container {
+        grid-template-columns: 230px minmax(0, 1fr) 310px !important;
+    }
+
+    .sidebar {
+        width: 230px !important;
+    }
+
+    .right-sidebar {
+        width: 310px !important;
+        padding: 20px 14px !important;
+    }
+
+    .main-content,
+    .main-content-full {
+        min-width: 0 !important;
+        width: 100% !important;
+        padding: 34px 34px !important;
+        overflow-x: hidden !important;
+    }
+
+    .dashboard-grid {
+        gap: 18px !important;
+    }
+
+    .dashboard-card {
+        min-width: 0 !important;
+    }
+
+    .card-header {
+        padding: 14px 16px !important;
+    }
+
+    .card-content {
+        padding: 16px !important;
+    }
+
+    .welcome-section h1 {
+        font-size: 26px !important;
+        line-height: 1.2 !important;
+    }
+
+    .profile-card {
+        padding: 18px 14px !important;
+    }
+
+    .profile-card .profile-top {
+        gap: 12px !important;
+    }
+
+    .profile-card .profile-avatar,
+    .profile-card .avatar-large {
+        width: 58px !important;
+        height: 58px !important;
+        min-width: 58px !important;
+        font-size: 24px !important;
+    }
+
+    .profile-card .profile-meta h3 {
+        font-size: 16px !important;
+    }
+
+    .profile-line {
+        grid-template-columns: 58px 1fr !important;
+    }
+
+    .profile-line .value {
+        overflow-wrap: anywhere !important;
+    }
+}
+
+@media (min-width: 1201px) and (max-width: 1320px) {
+    .dashboard-container {
+        grid-template-columns: 220px minmax(0, 1fr) !important;
+    }
+
+    .sidebar {
+        width: 220px !important;
+    }
+
+    .right-sidebar {
+        display: none !important;
+    }
+
+    .main-content,
+    .main-content-full {
+        grid-column: 2 / -1 !important;
+        padding: 32px 36px !important;
     }
 }
